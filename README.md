@@ -4,6 +4,9 @@ An open-source, command-line toolset for managing, reading, and annotating a per
 
 It bridges the gap between your filesystem (PDFs/EPUBs), your reading tools (Skim/Apple Books), and your knowledge base (Joplin).
 
+![Digital Library Manager Interface](screenshot.png)
+
+
 ## 🚀 Features
 
 *   **Fuzzy Search:** Instant access to your collection via `./lib` (powered by `fzf`).
