@@ -1,0 +1,32 @@
+# Python Artifacts
+__pycache__/
+*.pyc
+.venv/
+.venv_*
+.env
+
+# Configuration
+config.py
+
+# Library Content (DDC Folders)
+[0-9][0-9][0-9]_*/
+Personal/
+My_Research/
+MCI/
+_Inbox/
+
+# User-specific Book Metadata
+*.skim
+*.txt
+*.sdr
+
+# Generated Database & Indexes
+catalog.json
+reading_progress.json
+notes_sync.json
+TOC.md
+.fzf_preview.py
+.fzf_preview.sh
+
+# System Files
+.DS_Store

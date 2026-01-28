@@ -1,0 +1,31 @@
+{
+  "ddc_map": {
+    "0": "000_Computer_Science",
+    "1": "100_Philosophy",
+    "2": "200_Religion",
+    "3": "300_Social_Sciences",
+    "4": "400_Language",
+    "5": "500_Science",
+    "6": "600_Technology",
+    "7": "700_Arts",
+    "8": "800_Literature",
+    "9": "900_History"
+  },
+  "subcategory_map": {
+    "005": "000_Computer_Science/005_Programming",
+    "006": "000_Computer_Science/006_Artificial_Intelligence",
+    "22": "200_Religion/220_Scripture",
+    "264": "200_Religion/264_Liturgy",
+    "27": "200_Religion/270_Patristics",
+    "47": "400_Language/470_Latin",
+    "48": "400_Language/480_Greek",
+    "51": "500_Science/510_Mathematics",
+    "53": "500_Science/530_Physics",
+    "57": "500_Science/570_Biology",
+    "61": "600_Technology/610_Medicine",
+    "63": "600_Technology/630_Agriculture_Homesteading",
+    "74": "700_Arts/740_Drawing",
+    "78": "780_Music",
+    "796": "790_Recreation/796_Athletics"
+  }
+}

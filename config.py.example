@@ -1,0 +1,30 @@
+import platform
+
+# Joplin Configuration
+# Tokens are machine-specific. Get yours from Joplin -> Settings -> Web Clipper
+# Map your hostname (output of 'hostname -s') to your token.
+JOPLIN_TOKENS = {
+    'Your-Hostname': 'YOUR_JOPLIN_TOKEN_HERE',
+    # 'Another-Hostname': 'ANOTHER_TOKEN_HERE'
+}
+
+HOSTNAME = platform.node().split('.')[0]
+JOPLIN_TOKEN = JOPLIN_TOKENS.get(HOSTNAME, '')
+
+# Fallback for safety if hostname matching fails
+if not JOPLIN_TOKEN:
+    # Use the first available token as a default if available
+    if JOPLIN_TOKENS:
+        JOPLIN_TOKEN = next(iter(JOPLIN_TOKENS.values()))
+    else:
+        JOPLIN_TOKEN = ''
+
+JOPLIN_API_URL = 'http://localhost:41184'
+JOPLIN_NOTEBOOK_ID = '' # This will be fetched based on JOPLIN_NOTEBOOK_NAME
+JOPLIN_NOTEBOOK_NAME = 'Digital Library Notes' # CHANGE THIS if you want a different notebook name
+
+# Skim Configuration
+SKIM_APP_PATH = '/Applications/Skim.app'
+
+# KOReader Configuration
+KOREADER_APP_PATH = '/Applications/KOReader.app'

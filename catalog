@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -z "$DLM_LIBRARY_ROOT" ]; then
+    export DLM_LIBRARY_ROOT="$(pwd)"
+fi
+HOSTNAME=$(hostname -s)
+VENV_DIR="$SCRIPT_DIR/.venv_$HOSTNAME"
+if [ ! -d "$VENV_DIR" ]; then
+   echo "Virtual environment not found. Please run ./lib first to initialize."
+   exit 1
+fi
+cd "$DLM_LIBRARY_ROOT"
+"$VENV_DIR/bin/python3" "$SCRIPT_DIR/generate_catalog.py" "$@"
