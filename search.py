@@ -5,21 +5,22 @@ Search and open files from the catalog
 """
 
 import json
-import sys
-import subprocess
 import os
 import platform
+import subprocess
+import sys
 from pathlib import Path
 
-CATALOG_FILE = Path(__file__).parent / "catalog.json"
-LIBRARY_ROOT = Path(os.environ.get('DLM_LIBRARY_ROOT', Path(__file__).parent)).resolve()
+LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
+CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
+PROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"
 
 
 def load_catalog():
     """Load the catalog.json file"""
-    with open(CATALOG_FILE, 'r') as f:
+    with open(CATALOG_FILE, "r") as f:
         data = json.load(f)
-    return data['catalog']
+    return data["catalog"]
 
 
 def search_catalog(query, field=None):
@@ -38,25 +39,29 @@ def search_catalog(query, field=None):
 
         if field is None:
             # Search all fields
-            if query_lower in entry.get('title', '').lower():
+            if query_lower in entry.get("title", "").lower():
                 match = True
-            elif query_lower in entry.get('author', '').lower():
+            elif query_lower in entry.get("author", "").lower():
                 match = True
-            elif any(query_lower in subject.lower() for subject in entry.get('subjects', [])):
+            elif any(
+                query_lower in subject.lower() for subject in entry.get("subjects", [])
+            ):
                 match = True
-            elif query_lower in entry.get('category', '').lower():
+            elif query_lower in entry.get("category", "").lower():
                 match = True
-        elif field == 'title':
-            if query_lower in entry.get('title', '').lower():
+        elif field == "title":
+            if query_lower in entry.get("title", "").lower():
                 match = True
-        elif field == 'author':
-            if query_lower in entry.get('author', '').lower():
+        elif field == "author":
+            if query_lower in entry.get("author", "").lower():
                 match = True
-        elif field == 'subject':
-            if any(query_lower in subject.lower() for subject in entry.get('subjects', [])):
+        elif field == "subject":
+            if any(
+                query_lower in subject.lower() for subject in entry.get("subjects", [])
+            ):
                 match = True
-        elif field == 'category':
-            if query_lower in entry.get('category', '').lower():
+        elif field == "category":
+            if query_lower in entry.get("category", "").lower():
                 match = True
 
         if match:
@@ -74,8 +79,8 @@ def display_results(results):
     print(f"\nFound {len(results)} result(s):\n")
 
     for i, entry in enumerate(results, 1):
-        author_str = f" by {entry['author']}" if entry.get('author') else ""
-        subjects_str = ", ".join(entry.get('subjects', []))
+        author_str = f" by {entry['author']}" if entry.get("author") else ""
+        subjects_str = ", ".join(entry.get("subjects", []))
 
         print(f"{i}. {entry['title']}{author_str}")
         print(f"   Subjects: {subjects_str}")
@@ -96,15 +101,20 @@ def open_file(file_path):
     system = platform.system()
 
     try:
-        if system == 'Darwin':  # macOS
-            if full_path.suffix.lower() in ['.epub', '.mobi', '.azw3', '.azw']:
-                subprocess.Popen(['/Applications/KOReader.app/Contents/MacOS/koreader', str(full_path)])
+        if system == "Darwin":  # macOS
+            if full_path.suffix.lower() in [".epub", ".mobi", ".azw3", ".azw"]:
+                subprocess.Popen(
+                    [
+                        "/Applications/KOReader.app/Contents/MacOS/koreader",
+                        str(full_path),
+                    ]
+                )
             else:
-                subprocess.run(['open', str(full_path)])
-        elif system == 'Windows':
-            subprocess.run(['start', str(full_path)], shell=True)
+                subprocess.run(["open", str(full_path)])
+        elif system == "Windows":
+            subprocess.run(["start", str(full_path)], shell=True)
         else:  # Linux and others
-            subprocess.run(['xdg-open', str(full_path)])
+            subprocess.run(["xdg-open", str(full_path)])
 
         print(f"Opening: {full_path.name}")
         return True
@@ -115,7 +125,8 @@ def open_file(file_path):
 
 def print_usage():
     """Print usage information"""
-    print("""
+    print(
+        """
 Digital Library Search Tool
 
 Usage:
@@ -132,11 +143,12 @@ Examples:
   python search.py --title "real book"
 
 After searching, you can enter a number to open that file, or 'q' to quit.
-""")
+"""
+    )
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ['-h', '--help']:
+    if len(sys.argv) < 2 or sys.argv[1] in ["-h", "--help"]:
         print_usage()
         return
 
@@ -144,17 +156,17 @@ def main():
     field = None
     query = None
 
-    if sys.argv[1].startswith('--'):
+    if sys.argv[1].startswith("--"):
         if len(sys.argv) < 3:
             print("Error: Missing query after field specifier")
             print_usage()
             return
 
         field_map = {
-            '--title': 'title',
-            '--author': 'author',
-            '--subject': 'subject',
-            '--category': 'category'
+            "--title": "title",
+            "--author": "author",
+            "--subject": "subject",
+            "--category": "category",
         }
 
         field = field_map.get(sys.argv[1])
@@ -163,9 +175,9 @@ def main():
             print_usage()
             return
 
-        query = ' '.join(sys.argv[2:])
+        query = " ".join(sys.argv[2:])
     else:
-        query = ' '.join(sys.argv[1:])
+        query = " ".join(sys.argv[1:])
 
     # Search
     results = search_catalog(query, field)
@@ -179,13 +191,13 @@ def main():
         try:
             choice = input("Enter number to open file (or 'q' to quit): ").strip()
 
-            if choice.lower() == 'q':
+            if choice.lower() == "q":
                 break
 
             try:
                 num = int(choice)
                 if 1 <= num <= len(results):
-                    open_file(results[num - 1]['file_path'])
+                    open_file(results[num - 1]["file_path"])
                     break
                 else:
                     print(f"Please enter a number between 1 and {len(results)}")
@@ -197,5 +209,5 @@ def main():
             break
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

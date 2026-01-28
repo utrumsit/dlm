@@ -5,42 +5,43 @@ Features: fuzzy matching, DDC search, reading progress tracking
 """
 
 import json
-import sys
-import subprocess
 import os
 import platform
 import shutil
-from pathlib import Path
-from difflib import SequenceMatcher
+import subprocess
+import sys
 from datetime import datetime
-from joplin_client import JoplinClient
-from note_extractor import extract_skim_notes, extract_apple_books_notes
-from lib_fzf import run_fzf_search
-from lib_fzf import run_fzf_search
+from difflib import SequenceMatcher
+from pathlib import Path
 
-CATALOG_FILE = Path(__file__).parent / "catalog.json"
-PROGRESS_FILE = Path(__file__).parent / "reading_progress.json"
-LIBRARY_ROOT = Path(os.environ.get('DLM_LIBRARY_ROOT', Path(__file__).parent)).resolve()
+from joplin_client import JoplinClient
+from lib_fzf import run_fzf_search
+from note_extractor import extract_apple_books_notes, extract_skim_notes
+
+# Define paths
+LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
+CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
+PROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"
 
 
 def load_catalog():
     """Load the catalog.json file"""
-    with open(CATALOG_FILE, 'r') as f:
+    with open(CATALOG_FILE, "r") as f:
         data = json.load(f)
-    return data['catalog']
+    return data["catalog"]
 
 
 def load_progress():
     """Load reading progress data"""
     if PROGRESS_FILE.exists():
-        with open(PROGRESS_FILE, 'r') as f:
+        with open(PROGRESS_FILE, "r") as f:
             return json.load(f)
     return {}
 
 
 def save_progress(progress_data):
     """Save reading progress data"""
-    with open(PROGRESS_FILE, 'w') as f:
+    with open(PROGRESS_FILE, "w") as f:
         json.dump(progress_data, f, indent=2)
 
 
@@ -48,11 +49,11 @@ def fuzzy_match(query, text, threshold=0.6):
     """Calculate similarity ratio between query and text"""
     query_lower = query.lower()
     text_lower = text.lower()
-    
+
     # Exact substring match gets bonus
     if query_lower in text_lower:
         return 1.0
-    
+
     # Otherwise use sequence matcher
     return SequenceMatcher(None, query_lower, text_lower).ratio()
 
@@ -67,46 +68,50 @@ def search_catalog(query, field=None, file_type=None, ddc=None, fuzzy=True):
     fuzzy: enable fuzzy matching for typos
     """
     catalog = load_catalog()
-    
+
     # If no search criteria are provided, return the whole catalog
     if not query and not field and not file_type and not ddc:
         return catalog
 
     results = []
-    
+
     query_lower = query.lower() if query else ""
 
     for entry in catalog:
         match = False
         score = 0.0
-        
+
         # Filter by file type first
-        if file_type and entry.get('file_type', '').lower() != file_type.lower():
+        if file_type and entry.get("file_type", "").lower() != file_type.lower():
             continue
-        
+
         # If no other criteria, it's a match because it passed the file_type filter
         if not ddc and not query:
             match = True
             score = 1.0
-        
+
         # DDC search
         elif ddc:
-            entry_ddc = entry.get('ddc', '')
+            entry_ddc = entry.get("ddc", "")
             if entry_ddc and str(entry_ddc).startswith(str(ddc)):
                 match = True
                 score = 1.0
-        
+
         # Text search
         elif query:
             if field is None:
                 # Search all fields
-                title_score = fuzzy_match(query, entry.get('title', ''))
-                author_score = fuzzy_match(query, entry.get('author', ''))
-                subject_scores = [fuzzy_match(query, s) for s in entry.get('subjects', [])]
-                category_score = fuzzy_match(query, entry.get('category', ''))
-                
-                max_score = max([title_score, author_score, category_score] + subject_scores)
-                
+                title_score = fuzzy_match(query, entry.get("title", ""))
+                author_score = fuzzy_match(query, entry.get("author", ""))
+                subject_scores = [
+                    fuzzy_match(query, s) for s in entry.get("subjects", [])
+                ]
+                category_score = fuzzy_match(query, entry.get("category", ""))
+
+                max_score = max(
+                    [title_score, author_score, category_score] + subject_scores
+                )
+
                 if fuzzy:
                     if max_score >= 0.6:
                         match = True
@@ -115,28 +120,28 @@ def search_catalog(query, field=None, file_type=None, ddc=None, fuzzy=True):
                     if max_score == 1.0:  # Exact match only
                         match = True
                         score = max_score
-                        
-            elif field == 'title':
-                score = fuzzy_match(query, entry.get('title', ''))
+
+            elif field == "title":
+                score = fuzzy_match(query, entry.get("title", ""))
                 match = score >= (0.6 if fuzzy else 1.0)
-            elif field == 'author':
-                score = fuzzy_match(query, entry.get('author', ''))
+            elif field == "author":
+                score = fuzzy_match(query, entry.get("author", ""))
                 match = score >= (0.6 if fuzzy else 1.0)
-            elif field == 'subject':
-                scores = [fuzzy_match(query, s) for s in entry.get('subjects', [])]
+            elif field == "subject":
+                scores = [fuzzy_match(query, s) for s in entry.get("subjects", [])]
                 score = max(scores) if scores else 0
                 match = score >= (0.6 if fuzzy else 1.0)
-            elif field == 'category':
-                score = fuzzy_match(query, entry.get('category', ''))
+            elif field == "category":
+                score = fuzzy_match(query, entry.get("category", ""))
                 match = score >= (0.6 if fuzzy else 1.0)
 
         if match:
-            entry['_score'] = score
+            entry["_score"] = score
             results.append(entry)
-    
+
     # Sort by score (highest first)
-    results.sort(key=lambda x: x.get('_score', 0), reverse=True)
-    
+    results.sort(key=lambda x: x.get("_score", 0), reverse=True)
+
     return results
 
 
@@ -150,20 +155,20 @@ def display_results(results, show_progress=True):
     print(f"\nFound {len(results)} result(s):\n")
 
     for i, entry in enumerate(results, 1):
-        author_str = f" by {entry['author']}" if entry.get('author') else ""
-        ddc_str = f" [DDC: {entry['ddc']}]" if entry.get('ddc') else ""
-        subjects_str = ", ".join(entry.get('subjects', [])[:3])  # Show first 3 subjects
-        
+        author_str = f" by {entry['author']}" if entry.get("author") else ""
+        ddc_str = f" [DDC: {entry['ddc']}]" if entry.get("ddc") else ""
+        subjects_str = ", ".join(entry.get("subjects", [])[:3])  # Show first 3 subjects
+
         # Check reading progress
-        file_id = entry.get('id')
+        file_id = entry.get("id")
         progress_str = ""
         if file_id in progress_data:
             prog = progress_data[file_id]
-            if 'page' in prog:
+            if "page" in prog:
                 progress_str = f" 📖 Last read: p.{prog['page']}"
-            if 'last_opened' in prog:
+            if "last_opened" in prog:
                 progress_str += f" ({prog['last_opened']})"
-        
+
         print(f"{i}. {entry['title']}{author_str}{ddc_str}")
         print(f"   Subjects: {subjects_str}")
         print(f"   Location: {entry['file_path']}{progress_str}")
@@ -175,15 +180,15 @@ def display_results(results, show_progress=True):
 def update_reading_progress(file_id, page=None):
     """Update reading progress for a file"""
     progress_data = load_progress()
-    
+
     if file_id not in progress_data:
         progress_data[file_id] = {}
-    
+
     if page is not None:
-        progress_data[file_id]['page'] = page
-    
-    progress_data[file_id]['last_opened'] = datetime.now().strftime('%Y-%m-%d')
-    
+        progress_data[file_id]["page"] = page
+
+    progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
+
     save_progress(progress_data)
 
 
@@ -191,9 +196,9 @@ def open_file(entry, set_page=None):
     """Open a file with the best available reader and jump to last page if possible.
     set_page: optional integer to immediately set/save a page number without prompt
     """
-    file_path = entry['file_path']
+    file_path = entry["file_path"]
     full_path = LIBRARY_ROOT / file_path
-    file_id = entry.get('id')
+    file_id = entry.get("id")
 
     if not full_path.exists():
         print(f"Error: File not found at {full_path}")
@@ -202,50 +207,56 @@ def open_file(entry, set_page=None):
     # Check for reading progress
     progress_data = load_progress()
     last_page = None
-    if file_id in progress_data and 'page' in progress_data[file_id]:
-        last_page = int(progress_data[file_id]['page'])
+    if file_id in progress_data and "page" in progress_data[file_id]:
+        last_page = int(progress_data[file_id]["page"])
         print(f"Last read at page {last_page}")
 
     system = platform.system()
-    file_type = entry.get('file_type', '').lower()
+    file_type = entry.get("file_type", "").lower()
 
     try:
-        if system == 'Darwin':  # macOS
-            if file_type == 'pdf':
-                skim_path = '/Applications/Skim.app/Contents/MacOS/Skim'
+        if system == "Darwin":  # macOS
+            if file_type == "pdf":
+                skim_path = "/Applications/Skim.app/Contents/MacOS/Skim"
                 if Path(skim_path).exists():
                     # Use AppleScript to open Skim
                     # Let Skim remember the page position automatically
-                    subprocess.run([
-                        'osascript',
-                        '-e', 'tell application "Skim"',
-                        '-e', 'activate',
-                        '-e', f'open POSIX file "{full_path}"',
-                        '-e', 'end tell'
-                    ])
+                    subprocess.run(
+                        [
+                            "osascript",
+                            "-e",
+                            'tell application "Skim"',
+                            "-e",
+                            "activate",
+                            "-e",
+                            f'open POSIX file "{full_path}"',
+                            "-e",
+                            "end tell",
+                        ]
+                    )
                 else:
                     # Fallback to default handler if Skim is not found
-                    subprocess.run(['open', str(full_path)])
-            elif file_type in ['epub', 'mobi', 'azw3', 'azw']:
+                    subprocess.run(["open", str(full_path)])
+            elif file_type in ["epub", "mobi", "azw3", "azw"]:
                 print(f"Opening: {entry['title']} (Apple Books)")
                 # Opening the file in Books.app will automatically add it to the library
-                subprocess.run(['open', '-a', 'Books', str(full_path)])
+                subprocess.run(["open", "-a", "Books", str(full_path)])
             else:
                 # Fallback to default handler
-                subprocess.run(['open', str(full_path)])
-        elif system == 'Windows':
-            subprocess.run(['start', str(full_path)], shell=True)
+                subprocess.run(["open", str(full_path)])
+        elif system == "Windows":
+            subprocess.run(["start", str(full_path)], shell=True)
         else:  # Linux
-            subprocess.run(['xdg-open', str(full_path)])
+            subprocess.run(["xdg-open", str(full_path)])
 
         print(f"Opening: {full_path.name}")
-        
+
         # Update progress immediately if requested
         if set_page is not None and isinstance(set_page, int):
             update_reading_progress(file_id, set_page)
         else:
             update_reading_progress(file_id)
-        
+
         # After the file is opened and presumably read, export notes.
         # For Books.app, we don't need to wait for the app to close.
         # We can just ask the user to confirm.
@@ -260,16 +271,16 @@ def open_file(entry, set_page=None):
 
 def export_notes_to_joplin(entry):
     """Extract notes and export them to Joplin."""
-    file_path = entry['file_path']
+    file_path = entry["file_path"]
     full_path = LIBRARY_ROOT / file_path
-    file_type = entry.get('file_type', '').lower()
-    title = entry.get('title', 'Notes') # Re-added this line
-    author = entry.get('author', '')
+    file_type = entry.get("file_type", "").lower()
+    title = entry.get("title", "Notes")
+    author = entry.get("author", "")
 
     # Create author tag
     author_tags = []
     if author:
-        names = author.split(' ')
+        names = author.split(" ")
         if len(names) > 1:
             # Assume last name is the last part, first name is the rest
             last_name = names[-1]
@@ -278,28 +289,27 @@ def export_notes_to_joplin(entry):
             first_name = "-".join(first_name_parts)
             author_tags.append(f"{last_name.lower()}-{first_name.lower()}")
         else:
-            author_tags.append(author.lower()) # Use full name if only one part
-
+            author_tags.append(author.lower())
 
     notes = None
-    if file_type == 'pdf':
+    if file_type == "pdf":
         skim_notes = extract_skim_notes(full_path)
         if skim_notes:
             # Construct biblio info from entry
             biblio_str = ""
-            if entry.get('author'):
+            if entry.get("author"):
                 biblio_str += f"**Author:** {entry['author']}\n"
-            if entry.get('ddc'):
+            if entry.get("ddc"):
                 biblio_str += f"**DDC:** {entry['ddc']}\n"
-            if entry.get('subjects'):
+            if entry.get("subjects"):
                 biblio_str += f"**Subjects:** {', '.join(entry['subjects'])}\n"
-            
+
             notes = f"# Notes for {title}\n\n{biblio_str}\n---\n\n{skim_notes}"
-    elif file_type in ['epub', 'mobi', 'azw3', 'azw']:
+    elif file_type in ["epub", "mobi", "azw3", "azw"]:
         data = extract_apple_books_notes(title)
-        if data and data['notes']:
-            biblio_info = data.get('bibliographical_info', {})
-            apple_notes = data.get('notes', [])
+        if data and data["notes"]:
+            biblio_info = data.get("bibliographical_info", {})
+            apple_notes = data.get("notes", [])
 
             # Format bibliographical info
             biblio_str = ""
@@ -307,21 +317,25 @@ def export_notes_to_joplin(entry):
                 biblio_str += f"**Author:** {biblio_info.get('author', 'N/A')}\n"
                 biblio_str += f"**Genre:** {biblio_info.get('genre', 'N/A')}\n"
                 biblio_str += f"**Language:** {biblio_info.get('language', 'N/A')}\n"
-                biblio_str += f"**Page Count:** {biblio_info.get('page_count', 'N/A')}\n"
-                if biblio_info.get('release_date'):
-                    # The date is a CoreData timestamp, so we need to convert it
-                    # It's seconds since Jan 1, 2001
-                    release_date = datetime(2001, 1, 1) + datetime.timedelta(seconds=biblio_info['release_date'])
-                    biblio_str += f"**Release Date:** {release_date.strftime('%Y-%m-%d')}\n"
+                biblio_str += (
+                    f"**Page Count:** {biblio_info.get('page_count', 'N/A')}\n"
+                )
+                if biblio_info.get("release_date"):
+                    release_date = datetime(2001, 1, 1) + datetime.timedelta(
+                        seconds=biblio_info["release_date"]
+                    )
+                    biblio_str += (
+                        f"**Release Date:** {release_date.strftime('%Y-%m-%d')}\n"
+                    )
 
-                if biblio_info.get('description'):
+                if biblio_info.get("description"):
                     biblio_str += f"\n---\n\n> {biblio_info['description']}\n\n---\n\n"
 
             formatted_notes = [f"# Notes for {title}\n\n{biblio_str}"]
             for note in apple_notes:
-                if note.get('highlight'):
+                if note.get("highlight"):
                     formatted_notes.append(f"> {note['highlight']}")
-                if note.get('note'):
+                if note.get("note"):
                     formatted_notes.append(f"\n**Note:** {note['note']}\n")
             notes = "\n".join(formatted_notes)
 
@@ -338,7 +352,8 @@ def export_notes_to_joplin(entry):
 
 def print_usage():
     """Print usage information"""
-    print("""
+    print(
+        """
 Enhanced Digital Library Search Tool
 
 Usage:
@@ -366,11 +381,12 @@ Examples:
   python search_enhanced.py --exact "Machine Learning"
 
 After searching, enter a number to open that file, or 'q' to quit.
-""")
+"""
+    )
 
 
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] in ['-h', '--help']:
+    if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help"]:
         print_usage()
         return
 
@@ -380,67 +396,87 @@ def main():
     file_type = None
     ddc = None
     fuzzy = True
-    
+
     set_page = None
     i = 1
     while i < len(sys.argv):
         arg = sys.argv[i]
-        
-        if arg == '--title':
-            field = 'title'
+
+        if arg == "--title":
+            field = "title"
             i += 1
-        elif arg == '--author':
-            field = 'author'
+        elif arg == "--author":
+            field = "author"
             i += 1
-        elif arg == '--subject':
-            field = 'subject'
+        elif arg == "--subject":
+            field = "subject"
             i += 1
-        elif arg == '--category':
-            field = 'category'
+        elif arg == "--category":
+            field = "category"
             i += 1
-        elif arg == '--ddc':
+        elif arg == "--ddc":
             if i + 1 < len(sys.argv):
                 ddc = sys.argv[i + 1]
                 i += 2
             else:
                 print("Error: --ddc requires a number")
                 return
-        elif arg == '--type':
+        elif arg == "--type":
             if i + 1 < len(sys.argv):
                 file_type = sys.argv[i + 1]
                 i += 2
             else:
                 print("Error: --type requires a file extension")
                 return
-        elif arg == '--set-page':
-            if i + 1 < len(sys.argv) and sys.argv[i+1].isdigit():
-                set_page = int(sys.argv[i+1])
+        elif arg == "--set-page":
+            if i + 1 < len(sys.argv) and sys.argv[i + 1].isdigit():
+                set_page = int(sys.argv[i + 1])
                 i += 2
             else:
                 print("Error: --set-page requires an integer page number")
                 return
-        elif arg == '--exact':
+        elif arg == "--exact":
             fuzzy = False
             i += 1
         else:
             # Rest is the query
-            query = ' '.join(sys.argv[i:])
+            query = " ".join(sys.argv[i:])
             break
 
-    # Search
-    results = search_catalog(query, field, file_type, ddc, fuzzy)
+    # If specific arguments are used, run once
+    if set_page is not None or query:
+        results = search_catalog(query, field, file_type, ddc, fuzzy)
+        if not results:
+            print("No results found.")
+            return
 
-    if not results:
-        print("No results found.")
+        progress_data = load_progress()
+        selected_entry = run_fzf_search(results, progress_data)
+        if selected_entry:
+            open_file(selected_entry, set_page=set_page)
         return
 
-    # Use fzf to select a book
-    progress_data = load_progress()
-    selected_entry = run_fzf_search(results, progress_data)
+    # Interactive Loop Mode
+    while True:
+        results = search_catalog(None, field, file_type, ddc, fuzzy)
 
-    if selected_entry:
-        open_file(selected_entry, set_page=set_page)
+        if not results:
+            print("No results found.")
+            break
+
+        progress_data = load_progress()
+        selected_entry = run_fzf_search(results, progress_data)
+
+        if selected_entry:
+            open_file(selected_entry)
+            print("\nReturning to library...")
+            import time
+
+            time.sleep(1)
+        else:
+            print("Goodbye!")
+            break
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,10 +1,18 @@
 # joplin_client.py
 
-import requests
 import json
+import os
 import platform
+import sys
 from datetime import datetime
-from config import JOPLIN_TOKEN, JOPLIN_API_URL, JOPLIN_NOTEBOOK_NAME
+
+import requests
+
+# Ensure config.py in the current directory (DLM_LIBRARY_ROOT) can be imported
+sys.path.insert(0, os.getcwd())
+
+from config import JOPLIN_API_URL, JOPLIN_NOTEBOOK_NAME, JOPLIN_TOKEN
+
 
 class JoplinClient:
     def __init__(self):
@@ -28,16 +36,16 @@ class JoplinClient:
                 res = requests.get(f"{self.api_url}/folders", params=params)
                 res.raise_for_status()
                 data = res.json()
-                results = data.get('items', [])
-                
+                results = data.get("items", [])
+
                 for notebook in results:
-                    if notebook['title'] == notebook_name:
-                        return notebook['id']
-                
-                if not data.get('has_more'):
+                    if notebook["title"] == notebook_name:
+                        return notebook["id"]
+
+                if not data.get("has_more"):
                     break
-                
-                params['page'] += 1
+
+                params["page"] += 1
         except requests.exceptions.RequestException as e:
             print(f"Error finding notebook: {e}")
         return None
@@ -50,12 +58,14 @@ class JoplinClient:
             res = requests.post(f"{self.api_url}/folders", params=params, json=body)
             res.raise_for_status()
             print(f"Created notebook: {notebook_name}")
-            return res.json()['id']
+            return res.json()["id"]
         except requests.exceptions.RequestException as e:
             print(f"Error creating notebook: {e}")
         return None
 
-    def create_or_update_note(self, title, body, parent_id=None, tags=None, append=False):
+    def create_or_update_note(
+        self, title, body, parent_id=None, tags=None, append=False
+    ):
         """Create a new note or update it if it already exists."""
         note_id = self._find_note_id(title)
         if note_id:
@@ -77,17 +87,17 @@ class JoplinClient:
                 # 4. Otherwise, merge them
                 else:
                     print(f"Merging content for '{title}' from multiple sources.")
-                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
-                    host = platform.node().split('.')[0]
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    host = platform.node().split(".")[0]
                     new_body = f"{existing_body}\n\n---\n### Merged from {host} on {timestamp}\n\n{body}"
                     note_data = self._update_note(note_id, new_body)
             else:
                 note_data = self._update_note(note_id, body)
         else:
             note_data = self._create_note(title, body, parent_id or self.notebook_id)
-        
+
         if note_data and tags:
-            self._set_note_tags(note_data['id'], tags)
+            self._set_note_tags(note_data["id"], tags)
         return note_data
 
     def get_note_body(self, note_id):
@@ -96,7 +106,7 @@ class JoplinClient:
         try:
             res = requests.get(f"{self.api_url}/notes/{note_id}", params=params)
             res.raise_for_status()
-            return res.json().get('body', '')
+            return res.json().get("body", "")
         except requests.exceptions.RequestException as e:
             print(f"Error getting note body: {e}")
         return ""
@@ -107,10 +117,10 @@ class JoplinClient:
         try:
             res = requests.get(f"{self.api_url}/search", params=params)
             res.raise_for_status()
-            results = res.json().get('items', [])
+            results = res.json().get("items", [])
             for note in results:
-                if note['title'] == title:
-                    return note['id']
+                if note["title"] == title:
+                    return note["id"]
         except requests.exceptions.RequestException as e:
             print(f"Error finding note: {e}")
         return None
@@ -122,7 +132,7 @@ class JoplinClient:
             "parent_id": parent_id,
             "title": title,
             "body": body,
-            "markup_language": 1 # Markdown
+            "markup_language": 1,  # Markdown
         }
         try:
             res = requests.post(f"{self.api_url}/notes", params=params, json=note_data)
@@ -136,9 +146,14 @@ class JoplinClient:
     def _update_note(self, note_id, body):
         """Update an existing note."""
         params = {"token": self.token}
-        note_data = {"body": body, "markup_language": 1} # Explicitly set Markdown for updates
+        note_data = {
+            "body": body,
+            "markup_language": 1,
+        }  # Explicitly set Markdown for updates
         try:
-            res = requests.put(f"{self.api_url}/notes/{note_id}", params=params, json=note_data)
+            res = requests.put(
+                f"{self.api_url}/notes/{note_id}", params=params, json=note_data
+            )
             res.raise_for_status()
             print(f"Updated note with ID: {note_id}")
             return res.json()
@@ -152,10 +167,10 @@ class JoplinClient:
         try:
             res = requests.get(f"{self.api_url}/search", params=params)
             res.raise_for_status()
-            results = res.json().get('items', [])
+            results = res.json().get("items", [])
             for tag in results:
-                if tag['title'] == tag_title:
-                    return tag['id']
+                if tag["title"] == tag_title:
+                    return tag["id"]
         except requests.exceptions.RequestException as e:
             print(f"Error finding tag: {e}")
         return None
@@ -168,7 +183,7 @@ class JoplinClient:
             res = requests.post(f"{self.api_url}/tags", params=params, json=tag_data)
             res.raise_for_status()
             print(f"Created tag: {tag_title}")
-            return res.json()['id']
+            return res.json()["id"]
         except requests.exceptions.RequestException as e:
             print(f"Error creating tag: {e}")
         return None
@@ -176,7 +191,7 @@ class JoplinClient:
     def _set_note_tags(self, note_id, tag_titles):
         """Set tags for a given note, creating tags if they don't exist."""
         current_tags = self._get_note_tags(note_id)
-        current_tag_titles = {tag['title'] for tag in current_tags}
+        current_tag_titles = {tag["title"] for tag in current_tags}
 
         tags_to_add = []
         for tag_title in tag_titles:
@@ -185,11 +200,15 @@ class JoplinClient:
                 if not tag_id:
                     tag_id = self._create_tag(tag_title)
                 tags_to_add.append(tag_id)
-        
+
         # Add new tags to note
         for tag_id in tags_to_add:
             try:
-                res = requests.post(f"{self.api_url}/tags/{tag_id}/notes", params={"token": self.token}, json={"id": note_id})
+                res = requests.post(
+                    f"{self.api_url}/tags/{tag_id}/notes",
+                    params={"token": self.token},
+                    json={"id": note_id},
+                )
                 res.raise_for_status()
                 print(f"Added tag to note: {tag_id} -> {note_id}")
             except requests.exceptions.RequestException as e:
@@ -197,9 +216,13 @@ class JoplinClient:
 
         # Remove tags that are no longer specified
         for tag in current_tags:
-            if tag['title'] not in tag_titles:
+            if tag["title"] not in tag_titles:
                 try:
-                    res = requests.delete(f"{self.api_url}/tags/{tag['id']}/notes", params={"token": self.token}, json={"id": note_id})
+                    res = requests.delete(
+                        f"{self.api_url}/tags/{tag['id']}/notes",
+                        params={"token": self.token},
+                        json={"id": note_id},
+                    )
                     res.raise_for_status()
                     print(f"Removed tag from note: {tag['id']} -> {note_id}")
                 except requests.exceptions.RequestException as e:
@@ -211,13 +234,13 @@ class JoplinClient:
         try:
             res = requests.get(f"{self.api_url}/notes/{note_id}/tags", params=params)
             res.raise_for_status()
-            return res.json()['items']
+            return res.json()["items"]
         except requests.exceptions.RequestException as e:
             print(f"Error getting note tags: {e}")
         return []
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage
     joplin = JoplinClient()
     if joplin.notebook_id:
