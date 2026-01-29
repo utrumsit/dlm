@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 # DDC Category mappings
 CATEGORY_INFO = {

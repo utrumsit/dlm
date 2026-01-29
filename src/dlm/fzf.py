@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Define paths
-from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 
 def load_catalog():

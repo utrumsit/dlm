@@ -14,7 +14,7 @@ from pathlib import Path
 
 import requests
 
-from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 INBOX_DIR = LIBRARY_ROOT / "_Inbox"
 CONFIG_FILE = LIBRARY_ROOT / "sorting_config.json"

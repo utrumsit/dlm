@@ -15,7 +15,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 # Define paths
-from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 from .extractor import extract_apple_books_notes, extract_skim_notes
 from .fzf import run_fzf_search
 from .joplin import JoplinClient
