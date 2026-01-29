@@ -177,7 +177,7 @@ def open_with_skim(entry):
         # Update last opened timestamp only
         progress_data = load_progress()
         if file_id not in progress_data:
-            progress_data[file_id] = {{}}
+            progress_data[file_id] = {}
         progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
         save_progress(progress_data)
 
@@ -197,7 +197,7 @@ def run_fzf_search(entries, progress_data, preview=True):
     # Format entries for fzf
     # Use format: ID<TAB>Display Text
     fzf_lines = []
-    id_map = {{}}
+    id_map = {}
 
     for entry in entries:
         fzf_line = format_entry_for_fzf(entry, progress_data)
@@ -279,7 +279,7 @@ def update_page_command(title_query, page):
     file_id = entry["id"]
 
     if file_id not in progress_data:
-        progress_data[file_id] = {{}}
+        progress_data[file_id] = {}
 
     progress_data[file_id]["page"] = page
     progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
@@ -453,7 +453,7 @@ def main():
             # Update last opened
             file_id = selected["id"]
             if file_id not in progress_data:
-                progress_data[file_id] = {{}}
+                progress_data[file_id] = {}
             progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
             save_progress(progress_data)
 
