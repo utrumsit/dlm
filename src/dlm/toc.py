@@ -7,7 +7,8 @@ import os
 from pathlib import Path
 from urllib.parse import quote
 
-LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
+from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+
 TOC_FILE = LIBRARY_ROOT / "TOC.md"
 
 

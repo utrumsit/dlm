@@ -14,14 +14,11 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from joplin_client import JoplinClient
-from lib_fzf import run_fzf_search
-from note_extractor import extract_apple_books_notes, extract_skim_notes
-
 # Define paths
-LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
-CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
-PROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"
+from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .extractor import extract_apple_books_notes, extract_skim_notes
+from .fzf import run_fzf_search
+from .joplin import JoplinClient
 
 
 def load_catalog():

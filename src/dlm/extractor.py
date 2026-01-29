@@ -6,7 +6,7 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-from lib_notes import parse_lua_table
+from .notes import parse_lua_table
 
 
 def extract_skim_notes(pdf_path):

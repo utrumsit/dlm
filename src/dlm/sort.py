@@ -14,7 +14,8 @@ from pathlib import Path
 
 import requests
 
-LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
+from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+
 INBOX_DIR = LIBRARY_ROOT / "_Inbox"
 CONFIG_FILE = LIBRARY_ROOT / "sorting_config.json"
 
@@ -148,7 +149,7 @@ def determine_destination(ddc, config, filename=None, title=None):
     return broad_folder
 
 
-def sort_books():
+def main():
     print(f"Scanning {INBOX_DIR}...")
     if not INBOX_DIR.exists():
         print("_Inbox not found.")
@@ -194,4 +195,4 @@ def sort_books():
 
 
 if __name__ == "__main__":
-    sort_books()
+    main()

@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "dlm"
+version = "0.1.0"
+description = "Digital Library Manager: CLI for managing and reading a personal DDC library"
+authors = ["Karl Schudt"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "dlm", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.31.0"
+
+[tool.poetry.scripts]
+dlm = "dlm.cli:main"
+dlm-catalog = "dlm.catalog:main"
+dlm-sort = "dlm.sort:main"
+dlm-init = "dlm.init:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -9,9 +9,7 @@ from datetime import datetime
 import requests
 
 # Ensure config.py in the current directory (DLM_LIBRARY_ROOT) can be imported
-sys.path.insert(0, os.getcwd())
-
-from config import JOPLIN_API_URL, JOPLIN_NOTEBOOK_NAME, JOPLIN_TOKEN
+from .config import JOPLIN_API_URL, JOPLIN_NOTEBOOK_NAME, JOPLIN_TOKEN
 
 
 class JoplinClient:

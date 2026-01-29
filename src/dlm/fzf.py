@@ -13,9 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Define paths
-LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
-CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
-PROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"
+from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 
 def load_catalog():
@@ -104,7 +102,7 @@ import os
 from pathlib import Path
 
 # Paths must be resolved dynamically in the preview script too
-LIBRARY_ROOT = Path(os.environ.get('DLM_LIBRARY_ROOT', Path(__file__).parent)).resolve()
+LIBRARY_ROOT = Path(os.environ.get('DLM_LIBRARY_ROOT', os.getcwd())).resolve()
 CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
 PROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"
 

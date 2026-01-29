@@ -12,8 +12,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
-LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path(__file__).parent)).resolve()
-CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
+from .config import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 # DDC Category mappings
 CATEGORY_INFO = {

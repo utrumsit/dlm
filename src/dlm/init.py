@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 
-def init_library():
+def main():
     # Scaffolds the library structure.
     # 1. Determine Library Root
     env_root = os.environ.get("DLM_LIBRARY_ROOT")
@@ -66,4 +66,4 @@ def init_library():
 
 
 if __name__ == "__main__":
-    init_library()
+    main()
