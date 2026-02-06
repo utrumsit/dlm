@@ -12,10 +12,37 @@ import requests
 from .settings import JOPLIN_API_URL, JOPLIN_NOTEBOOK_NAME, JOPLIN_TOKEN
 
 
+def check_joplin(api_url=JOPLIN_API_URL, token=JOPLIN_TOKEN):
+    """Check if Joplin Web Clipper is reachable. Returns (ok, message)."""
+    if not token:
+        return False, "No Joplin API token configured. Check config.py in your library root."
+
+    try:
+        res = requests.get(f"{api_url}/ping", timeout=3)
+        if res.status_code == 200:
+            return True, "Joplin Web Clipper is running."
+        return False, f"Joplin responded with status {res.status_code}."
+    except requests.exceptions.ConnectionError:
+        return False, (
+            "Cannot connect to Joplin Web Clipper.\n"
+            "  • Is Joplin running?\n"
+            "  • Is the Web Clipper plugin enabled? (Settings → Web Clipper → Enable)"
+        )
+    except requests.exceptions.Timeout:
+        return False, "Joplin Web Clipper timed out."
+
+
 class JoplinClient:
     def __init__(self):
         self.token = JOPLIN_TOKEN
         self.api_url = JOPLIN_API_URL
+        self.notebook_id = None
+
+        ok, msg = check_joplin(self.api_url, self.token)
+        if not ok:
+            print(f"⚠️  {msg}")
+            return
+
         self.notebook_id = self._get_notebook_id(JOPLIN_NOTEBOOK_NAME)
 
     def _get_notebook_id(self, notebook_name):
