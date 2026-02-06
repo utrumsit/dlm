@@ -16,6 +16,7 @@ dlm = "dlm.cli:main"
 dlm-catalog = "dlm.catalog:main"
 dlm-sort = "dlm.sort:main"
 dlm-init = "dlm.init:main"
+dlm-toc = "dlm.toc:main"
 
 [build-system]
 requires = ["poetry-core"]

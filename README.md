@@ -53,6 +53,7 @@ The `config.py` file is located in your **Library Root**. Edit it to add your Jo
 | `dlm` | Launch the interactive search & read loop |
 | `dlm-sort` | Sort books from `_Inbox` into DDC folders |
 | `dlm-catalog` | Refresh the search index (`catalog.json`) |
+| `dlm-toc` | Generate `TOC.md` table of contents |
 | `dlm-init` | Initialize a new library structure |
 
 ---

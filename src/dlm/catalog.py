@@ -31,6 +31,11 @@ CATEGORY_INFO = {
         "ddc": "200",
         "default_subjects": ["Religion", "Theology"],
     },
+    "300_Social_Sciences": {
+        "name": "Social Sciences",
+        "ddc": "300",
+        "default_subjects": ["Social Sciences"],
+    },
     "400_Language": {
         "name": "Language",
         "ddc": "400",
@@ -52,6 +57,16 @@ CATEGORY_INFO = {
         "name": "Recreation & Sports",
         "ddc": "790",
         "default_subjects": ["Recreation", "Sports"],
+    },
+    "800_Literature": {
+        "name": "Literature",
+        "ddc": "800",
+        "default_subjects": ["Literature"],
+    },
+    "900_History": {
+        "name": "History & Geography",
+        "ddc": "900",
+        "default_subjects": ["History", "Geography"],
     },
     "Personal": {"name": "Personal", "ddc": None, "default_subjects": ["Personal"]},
     "My_Research": {

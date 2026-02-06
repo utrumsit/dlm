@@ -174,6 +174,15 @@ def main():
 
         ddc, title = get_ddc_from_open_library(query)
 
+        if not ddc:
+            print("  -> No DDC found in Open Library.")
+            manual_ddc = input(
+                "  Enter DDC manually to file this book (or Enter to skip): "
+            ).strip()
+            if manual_ddc:
+                ddc = manual_ddc
+                title = clean_filename(file.name)
+
         if ddc:
             dest_folder = determine_destination(ddc, config, file.name, title)
 
@@ -188,8 +197,6 @@ def main():
                 shutil.move(str(file), str(dest_path))
             else:
                 print(f"  -> Could not map DDC {ddc} to a folder. Left in Inbox.")
-        else:
-            print("  -> No DDC found in Open Library.")
 
         time.sleep(1)
 
