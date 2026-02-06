@@ -6,9 +6,6 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-from .notes import parse_lua_table
-
-
 def extract_skim_notes(pdf_path):
     """Extract notes from a PDF using Skim's skimnotes command-line tool.
     Checks both extended attributes and .skim sidecar files.
@@ -47,11 +44,6 @@ def extract_skim_notes(pdf_path):
     except Exception as e:
         print(f"An error occurred while extracting Skim notes: {e}")
         return None
-
-
-def extract_koreader_notes(file_path):
-    """[CANCELLED] Extract notes from a KOReader metadata.lua file."""
-    return None
 
 
 def extract_apple_books_notes(book_title):

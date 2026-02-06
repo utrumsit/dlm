@@ -12,29 +12,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Define paths
+from .data import load_catalog, load_progress, save_progress
 from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
-
-
-def load_catalog():
-    """Load the catalog.json file"""
-    with open(CATALOG_FILE, "r") as f:
-        data = json.load(f)
-    return data["catalog"]
-
-
-def load_progress():
-    """Load reading progress data"""
-    if PROGRESS_FILE.exists():
-        with open(PROGRESS_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-
-def save_progress(progress_data):
-    """Save reading progress data"""
-    with open(PROGRESS_FILE, "w") as f:
-        json.dump(progress_data, f, indent=2)
 
 
 def filter_catalog(catalog, ddc=None, file_type=None, recent=False, in_progress=False):

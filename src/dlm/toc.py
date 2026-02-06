@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from urllib.parse import quote
 
-from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .settings import LIBRARY_ROOT
 
 TOC_FILE = LIBRARY_ROOT / "TOC.md"
 
