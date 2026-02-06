@@ -14,7 +14,6 @@ JOPLIN_TOKEN = ""
 JOPLIN_API_URL = "http://localhost:41184"
 JOPLIN_NOTEBOOK_NAME = "Digital Library Notes"
 SKIM_APP_PATH = "/Applications/Skim.app"
-KOREADER_APP_PATH = "/Applications/KOReader.app"
 
 # 3. Dynamically load the user's config.py
 if USER_CONFIG_PATH.exists():
@@ -34,8 +33,6 @@ if USER_CONFIG_PATH.exists():
             JOPLIN_NOTEBOOK_NAME = user_config.JOPLIN_NOTEBOOK_NAME
         if hasattr(user_config, "SKIM_APP_PATH"):
             SKIM_APP_PATH = user_config.SKIM_APP_PATH
-        if hasattr(user_config, "KOREADER_APP_PATH"):
-            KOREADER_APP_PATH = user_config.KOREADER_APP_PATH
     except (PermissionError, OSError) as e:
         print(f"\n\033[91mError loading configuration file: {USER_CONFIG_PATH}\033[0m")
         print(f"\033[93mCause: {e}\033[0m")

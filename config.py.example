@@ -25,6 +25,3 @@ JOPLIN_NOTEBOOK_NAME = 'Digital Library Notes' # CHANGE THIS if you want a diffe
 
 # Skim Configuration
 SKIM_APP_PATH = '/Applications/Skim.app'
-
-# KOReader Configuration
-KOREADER_APP_PATH = '/Applications/KOReader.app'

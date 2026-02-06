@@ -1,7 +1,7 @@
 # AGENTS.md - Digital Library Manager (DLM)
 
 ## What This Is
-A CLI toolset for managing a personal digital library using Dewey Decimal Classification (DDC). Search via fzf, open PDFs in Skim / EPUBs in Apple Books or KOReader, extract annotations, and sync notes to Joplin.
+A CLI toolset for managing a personal digital library using Dewey Decimal Classification (DDC). Search via fzf, open PDFs in Skim / EPUBs in Apple Books, extract annotations, and sync notes to Joplin.
 
 ## Architecture: Code vs Data
 **Critical concept:** The code repo and the library data are separate. The code lives here in git. The actual books, catalog, and config live at `DLM_LIBRARY_ROOT` (typically a cloud-synced folder like OneDrive).
