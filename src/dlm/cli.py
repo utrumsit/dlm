@@ -7,7 +7,6 @@ Features: fuzzy matching, DDC search, reading progress tracking
 import json
 import os
 import platform
-import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -19,6 +18,7 @@ from .settings import LIBRARY_ROOT
 from .extractor import extract_apple_books_notes, extract_skim_notes
 from .fzf import run_fzf_search
 from .joplin import JoplinClient
+from .opener import open_file as _open_file
 
 
 def fuzzy_match(query, text, threshold=0.6):
@@ -153,96 +153,21 @@ def display_results(results, show_progress=True):
     return results
 
 
-def update_reading_progress(file_id, page=None):
-    """Update reading progress for a file"""
-    progress_data = load_progress()
-
-    if file_id not in progress_data:
-        progress_data[file_id] = {}
-
-    if page is not None:
-        progress_data[file_id]["page"] = page
-
-    progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
-
-    save_progress(progress_data)
-
-
 def open_file(entry, set_page=None):
-    """Open a file with the best available reader and jump to last page if possible.
-    set_page: optional integer to immediately set/save a page number without prompt
+    """Open a file and optionally export notes to Joplin afterward.
+    Delegates actual file opening to opener.py.
     """
-    file_path = entry["file_path"]
-    full_path = LIBRARY_ROOT / file_path
-    file_id = entry.get("id")
-
-    if not full_path.exists():
-        print(f"Error: File not found at {full_path}")
+    if not _open_file(entry, set_page=set_page):
         return False
 
-    # Check for reading progress
-    progress_data = load_progress()
-    last_page = None
-    if file_id in progress_data and "page" in progress_data[file_id]:
-        last_page = int(progress_data[file_id]["page"])
-        print(f"Last read at page {last_page}")
-
-    system = platform.system()
-    file_type = entry.get("file_type", "").lower()
-
+    # After reading, offer to export notes to Joplin
     try:
-        if system == "Darwin":  # macOS
-            if file_type == "pdf":
-                skim_path = "/Applications/Skim.app/Contents/MacOS/Skim"
-                if Path(skim_path).exists():
-                    # Use AppleScript to open Skim
-                    # Let Skim remember the page position automatically
-                    subprocess.run(
-                        [
-                            "osascript",
-                            "-e",
-                            'tell application "Skim"',
-                            "-e",
-                            "activate",
-                            "-e",
-                            f'open POSIX file "{full_path}"',
-                            "-e",
-                            "end tell",
-                        ]
-                    )
-                else:
-                    # Fallback to default handler if Skim is not found
-                    subprocess.run(["open", str(full_path)])
-            elif file_type in ["epub", "mobi", "azw3", "azw"]:
-                print(f"Opening: {entry['title']} (Apple Books)")
-                # Opening the file in Books.app will automatically add it to the library
-                subprocess.run(["open", "-a", "Books", str(full_path)])
-            else:
-                # Fallback to default handler
-                subprocess.run(["open", str(full_path)])
-        elif system == "Windows":
-            subprocess.run(["start", str(full_path)], shell=True)
-        else:  # Linux
-            subprocess.run(["xdg-open", str(full_path)])
-
-        print(f"Opening: {full_path.name}")
-
-        # Update progress immediately if requested
-        if set_page is not None and isinstance(set_page, int):
-            update_reading_progress(file_id, set_page)
-        else:
-            update_reading_progress(file_id)
-
-        # After the file is opened and presumably read, export notes.
-        # For Books.app, we don't need to wait for the app to close.
-        # We can just ask the user to confirm.
         input("Press Enter after you have finished reading and making notes...")
         export_notes_to_joplin(entry)
+    except KeyboardInterrupt:
+        print("\nSkipping note export.")
 
-        return True
-    except Exception as e:
-        print(f"Error opening file: {e}")
-        return False
+    return True
 
 
 def export_notes_to_joplin(entry):

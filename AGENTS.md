@@ -16,12 +16,13 @@ Never hardcode paths to the library. Always use `LIBRARY_ROOT` from `settings.py
 |--------|---------|
 | `cli.py` | Main entry point (`dlm`). Search, open files, export notes to Joplin |
 | `fzf.py` | Interactive fzf-based search with preview panel |
+| `opener.py` | **Unified file opener** — Skim for PDFs, Apple Books for EPUBs, system default for others. Progress tracking. |
+| `data.py` | Shared data access — `load_catalog()`, `load_progress()`, `save_progress()` |
 | `catalog.py` | Scans library folders, extracts PDF/EPUB metadata, builds `catalog.json` |
 | `sort.py` | Auto-sorts `_Inbox/` files using Open Library DDC lookup |
 | `settings.py` | Loads config dynamically from `DLM_LIBRARY_ROOT/config.py`, defines paths |
 | `extractor.py` | Extracts annotations from Skim (PDF) and Apple Books (EPUB) |
 | `joplin.py` | Joplin Web Clipper API client with smart note merging |
-| `notes.py` | KOReader Lua table parser (partially implemented) |
 | `toc.py` | Generates `TOC.md` from library structure |
 | `init.py` | Scaffolds a new library with DDC folders |
 
@@ -53,10 +54,8 @@ Subcategories nest inside: e.g., `700_Arts/780_Music/781.65_Jazz/`
 New categories must be added to **both** `CATEGORY_INFO` (top-level) or `DDC_SUBCATEGORIES` (nested) in `catalog.py`, **and** to `init.py` if they should be created on first run.
 
 ## Known Issues / Tech Debt
-- `search.py` at repo root is dead code (old pre-refactor version of `cli.py`)
-- `notes.py` has a half-finished KOReader parser; `extractor.py` returns `None` for KOReader
-- `load_catalog()` and `load_progress()` are duplicated across `cli.py`, `fzf.py`, and `toc.py`
-- File-opening logic is split across `cli.py` and `fzf.py` with inconsistent behavior (Books.app vs KOReader for EPUBs)
+- No graceful handling when `catalog.json` doesn't exist (crashes; should suggest running `dlm-catalog`)
+- No test suite beyond `test_lookup.py` (manual one-off)
 
 ## Testing
 No test suite yet. `test_lookup.py` is a manual one-off script for Open Library API testing.

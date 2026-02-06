@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .data import load_catalog, load_progress, save_progress
+from .opener import open_file
 from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 
@@ -134,37 +135,6 @@ except Exception as e:
 
     preview_script.chmod(0o755)
     return preview_script
-
-
-def open_with_skim(entry):
-    """Open PDF with Skim - Skim remembers page position automatically"""
-    file_path = entry["file_path"]
-    full_path = LIBRARY_ROOT / file_path
-    file_id = entry.get("id")
-
-    if not full_path.exists():
-        print(f"Error: File not found at {full_path}")
-        return False
-
-    try:
-        # Just open with Skim - it remembers the last page automatically
-        subprocess.Popen(["open", "-a", "Skim", str(full_path)])
-
-        print(f"Opening: {entry['title']}")
-        print("(Skim will remember your page position automatically)")
-
-        # Update last opened timestamp only
-        progress_data = load_progress()
-        if file_id not in progress_data:
-            progress_data[file_id] = {}
-        progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
-        save_progress(progress_data)
-
-        return True
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
 
 
 def run_fzf_search(entries, progress_data, preview=True):
@@ -411,30 +381,7 @@ def main():
 
     if selected:
         print(f"\n📖 Selected: {selected['title']}")
-
-        # Open with Skim
-        file_type = selected.get("file_type", "").lower()
-        if file_type == "pdf":
-            open_with_skim(selected)
-        else:
-            full_path = LIBRARY_ROOT / selected["file_path"]
-            if file_type in ["epub", "mobi", "azw3", "azw"]:
-                print(f"Opening: {selected['title']} (KOReader)")
-                subprocess.Popen(
-                    [
-                        "/Applications/KOReader.app/Contents/MacOS/koreader",
-                        str(full_path),
-                    ]
-                )
-            else:
-                subprocess.run(["open", str(full_path)])
-
-            # Update last opened
-            file_id = selected["id"]
-            if file_id not in progress_data:
-                progress_data[file_id] = {}
-            progress_data[file_id]["last_opened"] = datetime.now().strftime("%Y-%m-%d")
-            save_progress(progress_data)
+        open_file(selected)
 
 
 if __name__ == "__main__":
