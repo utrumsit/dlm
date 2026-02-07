@@ -2,66 +2,105 @@
 
 An open-source, command-line toolset for managing, reading, and annotating a personal digital library using the **Dewey Decimal Classification (DDC)** system.
 
+Now featuring an **AI Reading Assistant** that answers questions about the page you are reading in real-time.
+
 ![Digital Library Manager Interface](screenshot.png)
 
 ## 🚀 Features
 
-*   **System-Wide CLI:** Just type `dlm` from anywhere to search your library.
-*   **Smart Annotation Sync:** Auto-extracts Skim/Apple Books notes to Joplin.
-*   **Auto-Sorting:** Organizes books in your library based on DDC subjects.
-*   **Robust Configuration:** Supports multiple machines via a single config file.
+*   **System-Wide CLI:** Type `dlm` from anywhere to fuzzy-search your library.
+*   **AI Reading Assistant:** Ask "What does this mean?" about your current page (powered by Google Gemini).
+*   **Smart Annotation Sync:** Auto-extracts highlights from Skim (PDF) and Apple Books (EPUB) to Joplin.
+*   **Auto-Sorting:** Automatically organizes `_Inbox` files into DDC subject folders.
+*   **Code/Data Separation:** Your library lives in the cloud (OneDrive/Dropbox); the code lives here.
 
 ---
 
 ## 🛠️ Installation & Setup
 
 ### 1. Prerequisites
+*   **macOS** (Required for Skim/AppleScript features)
 *   **Python 3.9+**
-*   **poetry** (`brew install poetry`)
+*   **pipx** (`brew install pipx`) - *Recommended for installing Python tools*
 *   **fzf** (`brew install fzf`)
-*   **Skim** (`brew install --cask skim`)
+*   **Skim** (`brew install --cask skim`) - *The best PDF reader for macOS*
 *   **Joplin** (Running with Web Clipper enabled)
 
-### 2. Install the Package
-1.  Clone this repository.
-2.  Install using poetry:
-    ```bash
-    poetry install
-    ```
-    *Optionally, install system-wide using `pipx install .` if you have `pipx`.*
+### 2. Install DLM
+We recommend installing via `pipx` so the `dlm` command is available everywhere:
+
+```bash
+git clone https://github.com/your-username/dlm.git
+cd dlm
+pipx install -e .
+```
 
 ### 3. Setup Your Library Root
-Define where your books and metadata will live:
+Create a folder for your library (e.g., in OneDrive/Dropbox) and tell DLM where it is.
+Add this to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
 ```bash
 export DLM_LIBRARY_ROOT="$HOME/Library/CloudStorage/OneDrive-Personal/Documents/DigitalLibrary"
 ```
 
-Initialize the structure:
+Then reload your shell:
 ```bash
-poetry run dlm-init
+source ~/.zshrc
 ```
 
-### 4. Configuration
-The `config.py` file is located in your **Library Root**. Edit it to add your Joplin API tokens mapped to your hostnames.
+### 4. Initialize & Configure
+1.  **Scaffold the folders:**
+    ```bash
+    dlm-init
+    ```
+    This creates the `000_...`, `100_...` folders and a `config.py` in your library root.
+
+2.  **Edit `config.py` (in your Library Root):**
+    *   Add your **Joplin Web Clipper Token** (Settings -> Web Clipper).
+    *   Add your **Google Gemini API Key** (Get one at [Google AI Studio](https://aistudio.google.com/app/apikey)) for the Reading Assistant.
 
 ---
 
 ## 📖 Usage
 
+### Search & Read
+Run the main command:
+```bash
+dlm
+```
+*   Type to fuzzy search (Title, Author, Subject).
+*   Press **Enter** to open the book in Skim (PDF) or Books (EPUB).
+
+### 🤖 AI Reading Assistant
+Once a book is open, `dlm` enters **Reading Mode**. You will see a prompt in your terminal:
+
+```text
+--- Reading Session: [Book Title] ---
+(dlm) > ask Explain this theorem like I'm 5
+```
+It scrapes the text from the **active Skim page**, sends it to Gemini, and prints the explanation.
+
+### Sync Notes
+In the same reading prompt (or via `dlm` search later), you can sync your highlights:
+```text
+(dlm) > notes
+```
+This pulls highlights from the PDF and appends them to a note in Joplin.
+
+### Managing the Library
 | Command | Description |
 | :--- | :--- |
-| `dlm` | Launch the interactive search & read loop |
-| `dlm-sort` | Sort books from `_Inbox` into DDC folders |
-| `dlm-catalog` | Refresh the search index (`catalog.json`) |
-| `dlm-toc` | Generate `TOC.md` table of contents |
-| `dlm-init` | Initialize a new library structure |
+| `dlm-sort` | Scan `_Inbox/`, look up ISBNs/titles, and move files to correct DDC folders. |
+| `dlm-catalog` | Rescan all folders and rebuild `catalog.json`. Run this after adding files manually. |
+| `dlm-toc` | Generate a `TOC.md` markdown file listing your entire collection. |
 
 ---
 
 ## ☁️ Multi-Machine Sync Tips
 
-*   **Sync Data, Not Code:** Keep the library folder in OneDrive/Dropbox. Keep the code in its own Git repo.
-*   **Skim Sidecars:** Enable "Automatically save notes sidecar file" in Skim Preferences to sync PDF notes.
+*   **Sync Data, Not Code:** Keep the library folder in OneDrive/Dropbox. Keep this code repo in `~/dev/dlm`.
+*   **Skim Sidecars:** Enable "Automatically save notes sidecar file" in Skim Preferences to sync PDF highlights across devices.
+*   **Hostname-Aware Config:** The `config.py` supports different Joplin tokens for different machines (e.g., MacBook vs. Mac Mini).
 
 ---
 

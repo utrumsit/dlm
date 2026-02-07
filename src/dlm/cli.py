@@ -19,6 +19,8 @@ from .extractor import extract_apple_books_notes, extract_skim_notes
 from .fzf import run_fzf_search
 from .joplin import JoplinClient
 from .opener import open_file as _open_file
+from .context import get_current_context
+from .llm import ask_gemini
 
 
 def fuzzy_match(query, text, threshold=0.6):
@@ -153,20 +155,61 @@ def display_results(results, show_progress=True):
     return results
 
 
+def reading_mode_loop(entry):
+    """Interactive loop for the active reading session."""
+    print(f"\n--- Reading Session: {entry['title']} ---")
+    print("Commands:")
+    print("  ask <question>   Ask AI about the current page")
+    print("  notes            Export notes to Joplin now")
+    print("  q                Quit reading session (and return to search)")
+
+    while True:
+        try:
+            user_input = input("\n(dlm) > ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if not user_input:
+            continue
+
+        if user_input.lower() in ["q", "quit", "exit"]:
+            break
+
+        if user_input.lower() == "notes":
+            export_notes_to_joplin(entry)
+            continue
+
+        if user_input.lower().startswith("ask "):
+            question = user_input[4:].strip()
+            if not question:
+                print("Please provide a question.")
+                continue
+
+            print("Detecting context...")
+            app_name, context_text = get_current_context()
+            if not context_text:
+                print(f"Error getting context: {app_name}")
+                continue
+            
+            print(f"Context captured from {app_name}. Asking Gemini...")
+            answer = ask_gemini(context_text, question)
+            print("\n--- Answer ---")
+            print(answer)
+            print("--------------")
+            continue
+
+        print("Unknown command. Try 'ask ...', 'notes', or 'q'.")
+
+
 def open_file(entry, set_page=None):
-    """Open a file and optionally export notes to Joplin afterward.
-    Delegates actual file opening to opener.py.
-    """
+    """Open a file and enter reading mode."""
     if not _open_file(entry, set_page=set_page):
         return False
 
-    # After reading, offer to export notes to Joplin
-    try:
-        input("Press Enter after you have finished reading and making notes...")
-        export_notes_to_joplin(entry)
-    except KeyboardInterrupt:
-        print("\nSkipping note export.")
-
+    # Enter the interactive reading loop
+    reading_mode_loop(entry)
+    
     return True
 
 
@@ -267,6 +310,7 @@ Usage:
   python search_enhanced.py --type <ext> <query>       Filter by file type (pdf, epub)
   python search_enhanced.py --set-page <n> <query>     Set/save page for the selected file immediately
   python search_enhanced.py --exact <query>            Disable fuzzy matching (exact only)
+  dlm ask <question>                                   Ask AI about the current page in Skim
 
 DDC Quick Reference:
   000 - Computer Science     400 - Language          700 - Arts
@@ -287,6 +331,29 @@ After searching, enter a number to open that file, or 'q' to quit.
 
 
 def main():
+    # Helper Command: Ask about current reading context
+    if len(sys.argv) > 1 and sys.argv[1] == "ask":
+        if len(sys.argv) < 3:
+            print("Usage: dlm ask <question>")
+            return
+
+        question = " ".join(sys.argv[2:])
+        print("Detecting active book context...")
+        
+        app_name, context_text = get_current_context()
+        if not context_text:
+            print(f"Error: {app_name}")
+            return
+
+        print(f"Context captured from {app_name} ({len(context_text)} chars).")
+        print(f"Asking Gemini: {question}...\n")
+        
+        answer = ask_gemini(context_text, question)
+        print("--- Answer ---")
+        print(answer)
+        print("--------------")
+        return
+
     if len(sys.argv) > 1 and sys.argv[1] in ["-h", "--help"]:
         print_usage()
         return

@@ -25,11 +25,14 @@ Never hardcode paths to the library. Always use `LIBRARY_ROOT` from `settings.py
 | `joplin.py` | Joplin Web Clipper API client with smart note merging |
 | `toc.py` | Generates `TOC.md` from library structure |
 | `init.py` | Scaffolds a new library with DDC folders |
+| `context.py` | Reading context extraction (Skim active page scraping) |
+| `llm.py` | Gemini API client for reading assistant |
 
 ## Entry Points (pyproject.toml)
 | Command | Module |
 |---------|--------|
 | `dlm` | `cli:main` |
+| `dlm ask "question"` | `cli:main` (subcommand) |
 | `dlm-catalog` | `catalog:main` |
 | `dlm-sort` | `sort:main` |
 | `dlm-toc` | `toc:main` |

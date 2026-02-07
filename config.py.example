@@ -23,5 +23,9 @@ JOPLIN_API_URL = 'http://localhost:41184'
 JOPLIN_NOTEBOOK_ID = '' # This will be fetched based on JOPLIN_NOTEBOOK_NAME
 JOPLIN_NOTEBOOK_NAME = 'Digital Library Notes' # CHANGE THIS if you want a different notebook name
 
+# AI Reading Assistant (Google Gemini)
+# Get a key from https://aistudio.google.com/app/apikey
+GOOGLE_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
+
 # Skim Configuration
 SKIM_APP_PATH = '/Applications/Skim.app'
