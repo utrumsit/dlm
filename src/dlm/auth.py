@@ -16,7 +16,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 
 TOKEN_PATH = Path.home() / ".config" / "dlm" / "oauth_token.json"
-SCOPES = ["https://www.googleapis.com/auth/generative-language"]
+SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 
 def get_credentials(client_id=None, client_secret=None):

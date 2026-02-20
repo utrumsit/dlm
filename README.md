@@ -30,7 +30,7 @@ Now featuring an **AI Reading Assistant** that answers questions about the page 
 We recommend installing via `pipx` so the `dlm` command is available everywhere:
 
 ```bash
-git clone https://github.com/your-username/dlm.git
+git clone https://github.com/utrumsit/dlm.git
 cd dlm
 pipx install -e .
 ```
@@ -61,8 +61,11 @@ source ~/.zshrc
     cp config.py.example ~/.config/dlm/config.py
     ```
     Then edit `~/.config/dlm/config.py`:
-    *   Add your **Joplin Web Clipper Token** (Settings -> Web Clipper).
-    *   Add your **Google Gemini API Key** (Get one at [Google AI Studio](https://aistudio.google.com/app/apikey)) for the Reading Assistant.
+    *   Add your **Joplin Web Clipper Token** (Settings → Web Clipper → Advanced Options).
+    *   Set up **Google Gemini** for the AI Reading Assistant (choose one):
+        *   **OAuth (recommended):** Add your `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` ([create at GCP Console](https://console.cloud.google.com/apis/credentials) — enable "Generative Language API", create Desktop OAuth client), then run `dlm-auth`.
+        *   **API key:** Set `GOOGLE_API_KEY` (get one at [Google AI Studio](https://aistudio.google.com/app/apikey)).
+    *   Set `SKIM_APP_PATH` if Skim is not at `/Applications/Skim.app`.
 
     **Config lookup order:** `~/.config/dlm/config.py` (local, preferred) → `$DLM_LIBRARY_ROOT/config.py` (legacy fallback).
 
@@ -102,6 +105,7 @@ This pulls highlights from the PDF and appends them to a note in Joplin.
 | `dlm-sort` | Scan `_Inbox/`, look up ISBNs/titles, and move files to correct DDC folders. |
 | `dlm-catalog` | Rescan all folders and rebuild `catalog.json`. Run this after adding files manually. |
 | `dlm-toc` | Generate a `TOC.md` markdown file listing your entire collection. |
+| `dlm-auth` | Authenticate with Google via OAuth for the AI Reading Assistant. |
 
 ---
 
