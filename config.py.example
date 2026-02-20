@@ -14,8 +14,16 @@ JOPLIN_API_URL = "http://localhost:41184"
 JOPLIN_NOTEBOOK_NAME = "Digital Library Notes"
 
 # AI Reading Assistant (Google Gemini)
-# Get a key from https://aistudio.google.com/app/apikey
-# Or set GOOGLE_API_KEY as an environment variable
+#
+# Option 1 (recommended): OAuth — uses your Google account, no key management
+#   Create OAuth credentials at https://console.cloud.google.com/apis/credentials
+#   (Create project → Enable "Generative Language API" → OAuth Client ID → Desktop app)
+GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_SECRET = ""
+#   Then run: dlm-auth
+#
+# Option 2: API key (simpler but rate-limited on free tier)
+#   Get a key from https://aistudio.google.com/app/apikey
 GOOGLE_API_KEY = ""
 
 # Skim PDF Reader

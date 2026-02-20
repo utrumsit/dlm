@@ -21,6 +21,8 @@ JOPLIN_API_URL = "http://localhost:41184"
 JOPLIN_NOTEBOOK_NAME = "Digital Library Notes"
 SKIM_APP_PATH = "/Applications/Skim.app"
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_SECRET = ""
 
 # 3. Dynamically load the user's config.py
 if USER_CONFIG_PATH.exists():
@@ -42,6 +44,10 @@ if USER_CONFIG_PATH.exists():
             SKIM_APP_PATH = user_config.SKIM_APP_PATH
         if hasattr(user_config, "GOOGLE_API_KEY") and user_config.GOOGLE_API_KEY:
             GOOGLE_API_KEY = user_config.GOOGLE_API_KEY
+        if hasattr(user_config, "GOOGLE_CLIENT_ID") and user_config.GOOGLE_CLIENT_ID:
+            GOOGLE_CLIENT_ID = user_config.GOOGLE_CLIENT_ID
+        if hasattr(user_config, "GOOGLE_CLIENT_SECRET") and user_config.GOOGLE_CLIENT_SECRET:
+            GOOGLE_CLIENT_SECRET = user_config.GOOGLE_CLIENT_SECRET
     except (PermissionError, OSError) as e:
         print(f"\n\033[91mError loading configuration file: {USER_CONFIG_PATH}\033[0m")
         print(f"\033[93mCause: {e}\033[0m")

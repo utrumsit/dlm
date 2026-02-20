@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .data import load_progress, save_progress
-from .settings import LIBRARY_ROOT
+from .settings import LIBRARY_ROOT, SKIM_APP_PATH
 
 
 def open_file(entry, set_page=None):
@@ -71,12 +71,12 @@ def _open_macos(full_path, file_type, entry):
 
 def _open_pdf_skim(full_path):
     """Open PDF with Skim via AppleScript (falls back to system default)."""
-    skim_path = Path("/Applications/Skim.app/Contents/MacOS/Skim")
+    skim_path = Path(SKIM_APP_PATH) / "Contents" / "MacOS" / "Skim"
     if skim_path.exists():
         subprocess.Popen(
             [
                 "osascript",
-                "-e", 'tell application "Skim"',
+                "-e", f'tell application "{SKIM_APP_PATH}"',
                 "-e", "activate",
                 "-e", f'open POSIX file "{full_path}"',
                 "-e", "end tell",

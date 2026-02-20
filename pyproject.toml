@@ -11,6 +11,8 @@ packages = [{include = "dlm", from = "src"}]
 python = "^3.9"
 requests = "^2.31.0"
 google-genai = "^1.0.0"
+google-auth = ">=2.0.0"
+google-auth-oauthlib = ">=1.0.0"
 
 [tool.poetry.scripts]
 dlm = "dlm.cli:main"
@@ -18,6 +20,7 @@ dlm-catalog = "dlm.catalog:main"
 dlm-sort = "dlm.sort:main"
 dlm-init = "dlm.init:main"
 dlm-toc = "dlm.toc:main"
+dlm-auth = "dlm.auth:auth_command"
 
 [build-system]
 requires = ["poetry-core"]
