@@ -5,13 +5,7 @@ Uses the new Google GenAI SDK (v1.0+).
 
 import os
 from google import genai
-from .settings import LIBRARY_ROOT
-
-# Try to load API key from config if not in env
-try:
-    from config import GOOGLE_API_KEY
-except ImportError:
-    GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+from .settings import GOOGLE_API_KEY
 
 
 def ask_gemini(context_text, question):

@@ -55,9 +55,18 @@ source ~/.zshrc
     ```
     This creates the `000_...`, `100_...` folders and a `config.py` in your library root.
 
-2.  **Edit `config.py` (in your Library Root):**
+2.  **Create your local config** (recommended over editing the library root copy):
+    ```bash
+    mkdir -p ~/.config/dlm
+    cp config.py.example ~/.config/dlm/config.py
+    ```
+    Then edit `~/.config/dlm/config.py`:
     *   Add your **Joplin Web Clipper Token** (Settings -> Web Clipper).
     *   Add your **Google Gemini API Key** (Get one at [Google AI Studio](https://aistudio.google.com/app/apikey)) for the Reading Assistant.
+
+    **Config lookup order:** `~/.config/dlm/config.py` (local, preferred) → `$DLM_LIBRARY_ROOT/config.py` (legacy fallback).
+
+    The local path is recommended because API keys and tokens stay on the machine — no risk of syncing secrets to the cloud, and no timeouts from OneDrive/iCloud "Files On-Demand".
 
 ---
 
@@ -98,9 +107,16 @@ This pulls highlights from the PDF and appends them to a note in Joplin.
 
 ## ☁️ Multi-Machine Sync Tips
 
-*   **Sync Data, Not Code:** Keep the library folder in OneDrive/Dropbox. Keep this code repo in `~/dev/dlm`.
+*   **Sync Data, Not Code:** Keep the library folder in OneDrive/Dropbox. Keep this code repo separate.
+*   **Local Config:** Use `~/.config/dlm/config.py` on each machine with that machine's Joplin token and API keys. No hostname dict needed — each machine has its own file.
+*   **rclone (recommended):** If OneDrive's macOS app gives you trouble (cloud-only files, timeouts), use `rclone` to sync to a local folder:
+    ```bash
+    brew install rclone
+    rclone config   # one-time setup — authorize with Microsoft
+    rclone sync onedrive:Documents/DigitalLibrary /path/to/local/DigitalLibrary
+    ```
+    Set `DLM_LIBRARY_ROOT` to the local path. Use a cron job or launchd plist to sync periodically.
 *   **Skim Sidecars:** Enable "Automatically save notes sidecar file" in Skim Preferences to sync PDF highlights across devices.
-*   **Hostname-Aware Config:** The `config.py` supports different Joplin tokens for different machines (e.g., MacBook vs. Mac Mini).
 
 ---
 
