@@ -2,9 +2,12 @@
 
 import glob
 import platform
+import shutil
 import sqlite3
 import subprocess
 from pathlib import Path
+
+from .settings import SKIM_APP_PATH
 
 def extract_skim_notes(pdf_path):
     """Extract notes from a PDF using Skim's skimnotes command-line tool.
@@ -14,10 +17,14 @@ def extract_skim_notes(pdf_path):
         return None
 
     try:
-        skimnotes_path = "/Applications/Skim.app/Contents/SharedSupport/skimnotes"
-        if not Path(skimnotes_path).exists():
+        # Try config path first, then PATH
+        skimnotes_path = Path(SKIM_APP_PATH) / "Contents" / "SharedSupport" / "skimnotes"
+        if not skimnotes_path.exists():
+            skimnotes_path = shutil.which("skimnotes")
+        if not skimnotes_path:
             print("skimnotes tool not found.")
             return None
+        skimnotes_path = str(skimnotes_path)
 
         # 1. Try to get from extended attributes first
         result = subprocess.run(
