@@ -61,13 +61,14 @@ def format_entry_for_fzf(entry, progress_data):
     author = entry.get("author", "")[:30] if entry.get("author") else ""
     ddc = entry.get("ddc", "---")
     file_type = entry.get("file_type", "pdf").upper()
+    # Include filename so users can search by original filename (e.g. "TLCL")
+    filename = Path(entry.get("file_path", "")).name
 
-    # Format: TITLE (AUTHOR) [DDC] TYPE
-    # Keep it simple and readable
+    # Format: TITLE (AUTHOR) [DDC] TYPE | filename
     if author:
-        return f"{title} ({author}) [{ddc}] {file_type}"
+        return f"{title} ({author}) [{ddc}] {file_type} | {filename}"
     else:
-        return f"{title} [{ddc}] {file_type}"
+        return f"{title} [{ddc}] {file_type} | {filename}"
 
 
 def create_preview_script():
