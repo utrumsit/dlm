@@ -201,7 +201,7 @@ class JoplinClient:
         return None
 
     def _create_tag(self, tag_title):
-        """Create a new tag."""
+        """Create a new tag, or return existing one if it already exists."""
         params = {"token": self.token}
         tag_data = {"title": tag_title}
         try:
@@ -209,6 +209,14 @@ class JoplinClient:
             res.raise_for_status()
             print(f"Created tag: {tag_title}")
             return res.json()["id"]
+        except requests.exceptions.HTTPError as e:
+            # Joplin returns 500 if the tag already exists (API bug).
+            # Fall back to finding it by name.
+            if res.status_code == 500 and "already exists" in res.text:
+                existing_id = self._find_tag_id(tag_title)
+                if existing_id:
+                    return existing_id
+            print(f"Error creating tag: {e}")
         except requests.exceptions.RequestException as e:
             print(f"Error creating tag: {e}")
         return None
