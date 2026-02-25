@@ -17,7 +17,7 @@ from .opener import open_file
 from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
 
 
-def filter_catalog(catalog, ddc=None, file_type=None, recent=False, in_progress=False):
+def filter_catalog(catalog, ddc=None, file_type=None, recent=False, in_progress=False, read=False, unread=False):
     """Filter catalog based on criteria"""
     filtered = catalog
 
@@ -52,6 +52,24 @@ def filter_catalog(catalog, ddc=None, file_type=None, recent=False, in_progress=
             if e.get("id") in progress_data and "page" in progress_data[e["id"]]
         ]
 
+    # Read filter — show only books marked as read
+    if read:
+        progress_data = load_progress()
+        filtered = [
+            e
+            for e in filtered
+            if e.get("id") in progress_data and progress_data[e["id"]].get("status") == "read"
+        ]
+
+    # Unread filter — exclude books marked as read
+    if unread:
+        progress_data = load_progress()
+        filtered = [
+            e
+            for e in filtered
+            if e.get("id") not in progress_data or progress_data[e["id"]].get("status") != "read"
+        ]
+
     return filtered
 
 
@@ -64,11 +82,18 @@ def format_entry_for_fzf(entry, progress_data):
     # Include filename so users can search by original filename (e.g. "TLCL")
     filename = Path(entry.get("file_path", "")).name
 
+    # Check read status
+    file_id = entry.get("id")
+    status = ""
+    if file_id and file_id in progress_data:
+        if progress_data[file_id].get("status") == "read":
+            status = " ✅"
+
     # Format: TITLE (AUTHOR) [DDC] TYPE | filename
     if author:
-        return f"{title} ({author}) [{ddc}] {file_type} | {filename}"
+        return f"{title} ({author}) [{ddc}] {file_type}{status} | {filename}"
     else:
-        return f"{title} [{ddc}] {file_type} | {filename}"
+        return f"{title} [{ddc}] {file_type}{status} | {filename}"
 
 
 def create_preview_script():
@@ -124,6 +149,9 @@ try:
     
     # Show reading progress
     if entry_id in progress:
+        if progress[entry_id].get('status') == 'read':
+            print()
+            print("Status: ✅ Read")
         if 'last_opened' in progress[entry_id]:
             print()
             print(f"Last opened: {{progress[entry_id]['last_opened']}}")
@@ -268,6 +296,8 @@ Usage:
   ./lib --type <ext>             Filter by file type (pdf, epub)
   ./lib --recent                 Show recently accessed books
   ./lib --in-progress            Show books with saved page numbers
+  ./lib --read                   Show books marked as read
+  ./lib --unread                 Show books not yet read
   ./lib --update-page <title> <page>   Quick page update
   
 Interactive Mode:
@@ -320,6 +350,8 @@ def main():
     file_type = None
     recent = False
     in_progress = False
+    read = False
+    unread = False
     initial_query = None
 
     i = 1
@@ -338,6 +370,12 @@ def main():
         elif arg == "--in-progress":
             in_progress = True
             i += 1
+        elif arg == "--read":
+            read = True
+            i += 1
+        elif arg == "--unread":
+            unread = True
+            i += 1
         elif not arg.startswith("--"):
             # Non-flag argument - use as initial query for fzf
             initial_query = " ".join(sys.argv[i:])
@@ -355,7 +393,7 @@ def main():
             print("No recently accessed books found.")
             return
     else:
-        entries = filter_catalog(catalog, ddc, file_type, recent, in_progress)
+        entries = filter_catalog(catalog, ddc, file_type, recent, in_progress, read, unread)
 
     if not entries:
         print("No books found matching filters.")
@@ -371,6 +409,10 @@ def main():
         filter_desc.append("recently accessed")
     if in_progress:
         filter_desc.append("in progress")
+    if read:
+        filter_desc.append("read ✅")
+    if unread:
+        filter_desc.append("unread")
 
     if filter_desc:
         print(f"Searching: {', '.join(filter_desc)} ({len(entries)} books)")

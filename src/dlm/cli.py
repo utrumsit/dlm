@@ -161,6 +161,8 @@ def reading_mode_loop(entry):
     print("Commands:")
     print("  ask <question>   Ask AI about the current page")
     print("  notes            Export notes to Joplin now")
+    print("  done             Mark this book as read")
+    print("  unread           Remove read status")
     print("  q                Quit reading session (and return to search)")
 
     while True:
@@ -175,6 +177,27 @@ def reading_mode_loop(entry):
 
         if user_input.lower() in ["q", "quit", "exit"]:
             break
+
+        if user_input.lower() == "done":
+            progress_data = load_progress()
+            file_id = entry.get("id")
+            if file_id not in progress_data:
+                progress_data[file_id] = {}
+            progress_data[file_id]["status"] = "read"
+            save_progress(progress_data)
+            print(f"✅ Marked '{entry['title']}' as read.")
+            continue
+
+        if user_input.lower() == "unread":
+            progress_data = load_progress()
+            file_id = entry.get("id")
+            if file_id in progress_data and "status" in progress_data[file_id]:
+                del progress_data[file_id]["status"]
+                save_progress(progress_data)
+                print(f"📖 Removed read status from '{entry['title']}'.")
+            else:
+                print("Book wasn't marked as read.")
+            continue
 
         if user_input.lower() == "notes":
             export_notes_to_joplin(entry)
@@ -199,7 +222,7 @@ def reading_mode_loop(entry):
             print("--------------")
             continue
 
-        print("Unknown command. Try 'ask ...', 'notes', or 'q'.")
+        print("Unknown command. Try 'ask ...', 'notes', 'done', or 'q'.")
 
 
 def open_file(entry, set_page=None):
