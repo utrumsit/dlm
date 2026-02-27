@@ -68,15 +68,15 @@ If the context contains complex math or technical terms, explain them simply if 
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=prompt
         )
         return response.text
     except Exception as e:
-        # Fallback to 1.5-flash
+        # Fallback
         try:
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.0-flash-lite',
                 contents=prompt
             )
             return response.text
