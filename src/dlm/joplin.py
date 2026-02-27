@@ -105,10 +105,28 @@ class JoplinClient:
                 elif existing_body.strip() in body.strip():
                     print(f"New export for '{title}' is more complete. Updating.")
                     note_data = self._update_note(note_id, body)
-                # 3. If new is a subset of existing, skip (nothing new to add)
+                # 3. If new is a subset of existing, check for any truly new lines
                 elif body.strip() in existing_body.strip():
-                    print(f"Joplin already has more content for '{title}'. Skipping.")
-                    note_data = {"id": note_id}
+                    # Even if the full text is a subset, individual new annotations
+                    # may exist that aren't in the existing note yet
+                    existing_lines = set(
+                        line.strip() for line in existing_body.splitlines() if line.strip()
+                    )
+                    new_lines = [
+                        line
+                        for line in body.splitlines()
+                        if line.strip() and line.strip() not in existing_lines
+                    ]
+                    if new_lines:
+                        print(f"Found {len(new_lines)} new annotation(s) for '{title}'. Appending.")
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+                        host = platform.node().split(".")[0]
+                        new_content = "\n".join(new_lines)
+                        merged = f"{existing_body}\n\n---\n### New annotations from {host} on {timestamp}\n\n{new_content}"
+                        note_data = self._update_note(note_id, merged)
+                    else:
+                        print(f"Joplin already has all content for '{title}'. Skipping.")
+                        note_data = {"id": note_id}
                 # 4. Otherwise, merge them
                 else:
                     print(f"Merging content for '{title}' from multiple sources.")
