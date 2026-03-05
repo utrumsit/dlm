@@ -205,15 +205,20 @@ class JoplinClient:
         return None
 
     def _find_tag_id(self, tag_title):
-        """Find a tag by title, creating it if it doesn't exist."""
-        params = {"token": self.token, "query": f'title:"{tag_title}"', "type": "tag"}
+        """Find a tag by title by listing all tags (search API is unreliable for tags)."""
+        params = {"token": self.token, "page": 1}
         try:
-            res = requests.get(f"{self.api_url}/search", params=params)
-            res.raise_for_status()
-            results = res.json().get("items", [])
-            for tag in results:
-                if tag["title"] == tag_title:
-                    return tag["id"]
+            while True:
+                res = requests.get(f"{self.api_url}/tags", params=params)
+                res.raise_for_status()
+                data = res.json()
+                results = data.get("items", [])
+                for tag in results:
+                    if tag["title"] == tag_title:
+                        return tag["id"]
+                if not data.get("has_more"):
+                    break
+                params["page"] += 1
         except requests.exceptions.RequestException as e:
             print(f"Error finding tag: {e}")
         return None
@@ -229,8 +234,8 @@ class JoplinClient:
             return res.json()["id"]
         except requests.exceptions.HTTPError as e:
             # Joplin returns 500 if the tag already exists (API bug).
-            # Fall back to finding it by name.
-            if res.status_code == 500 and "already exists" in res.text:
+            # On any 500, fall back to finding it by name.
+            if res.status_code == 500:
                 existing_id = self._find_tag_id(tag_title)
                 if existing_id:
                     return existing_id
@@ -250,7 +255,8 @@ class JoplinClient:
                 tag_id = self._find_tag_id(tag_title)
                 if not tag_id:
                     tag_id = self._create_tag(tag_title)
-                tags_to_add.append(tag_id)
+                if tag_id:
+                    tags_to_add.append(tag_id)
 
         # Add new tags to note
         for tag_id in tags_to_add:
