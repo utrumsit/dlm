@@ -3,11 +3,10 @@ import os
 import sys
 from pathlib import Path
 
-# 1. Determine Library Root
-LIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path.cwd())).resolve()
+# 1. Determine Library Root\nLIBRARY_ROOT = Path(os.environ.get("DLM_LIBRARY_ROOT", Path.cwd())).resolve()\n\n# XDG Data Home for DLM data files (logs, cache, etc.)\nXDG_DATA_HOME = os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")\nDLM_DATA_DIR = Path(XDG_DATA_HOME) / "dlm"\nDLM_DATA_DIR.mkdir(parents=True, exist_ok=True)\n\n# Allow override\nif os.environ.get("DLM_DATA_DIR"):\n    DLM_DATA_DIR = Path(os.environ.get("DLM_DATA_DIR")).resolve()\n    DLM_DATA_DIR.mkdir(parents=True, exist_ok=True)\nelse:\n    # Auto-migrate old ~/.dlm/data\n    old_data_dir = Path.home() / ".dlm" / "data"\n    if old_data_dir.exists() and old_data_dir.is_dir():\n        print(f"Migrating data from {old_data_dir} to {DLM_DATA_DIR}")\n        import shutil\n        shutil.copytree(old_data_dir, DLM_DATA_DIR, dirs_exist_ok=True)\n        print("Migration complete. Old data preserved.")
 
 # 2. Find config file: local first, then library root (legacy)
-LOCAL_CONFIG_PATH = Path.home() / ".config" / "dlm" / "config.py"
+XDG_CONFIG_HOME = os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")\nLOCAL_CONFIG_PATH = Path(XDG_CONFIG_HOME) / "dlm" / "config.py"
 LIBRARY_CONFIG_PATH = LIBRARY_ROOT / "config.py"
 
 if LOCAL_CONFIG_PATH.exists():
@@ -27,7 +26,7 @@ GOOGLE_CLIENT_SECRET = ""
 # 3. Dynamically load the user's config.py
 if USER_CONFIG_PATH.exists():
     try:
-        spec = importlib.util.spec_from_file_location("user_config", USER_CONFIG_PATH)
+        if spec is None:\n    raise ValueError(f"Cannot load config from {USER_CONFIG_PATH}")\nuser_config = importlib.util.module_from_spec(spec)
         user_config = importlib.util.module_from_spec(spec)
         # Add to sys.modules so imports inside the user config work
         sys.modules["user_config"] = user_config
@@ -64,5 +63,4 @@ else:
         print(f"           {LIBRARY_CONFIG_PATH}")
         print(f"  Create one: mkdir -p ~/.config/dlm && cp config.py.example ~/.config/dlm/config.py")
 
-CATALOG_FILE = LIBRARY_ROOT / "catalog.json"
-PROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"
+CATALOG_FILE = LIBRARY_ROOT / "catalog.json"\nPROGRESS_FILE = LIBRARY_ROOT / "reading_progress.json"\n\n# Data files in XDG_DATA_HOME\nDLM_LOGS = DLM_DATA_DIR / "logs"\nDLM_CACHE = DLM_DATA_DIR / "cache"

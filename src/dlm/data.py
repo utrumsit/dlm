@@ -6,7 +6,7 @@ Single source of truth — other modules import from here.
 import json
 import sys
 
-from .settings import CATALOG_FILE, PROGRESS_FILE
+from .settings import CATALOG_FILE, PROGRESS_FILE, DLM_DATA_DIR
 
 
 def load_catalog():
@@ -20,7 +20,9 @@ def load_catalog():
         data = json.load(f)
 
     if not data.get("catalog"):
-        print("Warning: Catalog is empty. Add books to your library folders and run 'dlm-catalog'.")
+        print(
+            "Warning: Catalog is empty. Add books to your library folders and run 'dlm-catalog'."
+        )
         return []
 
     return data["catalog"]

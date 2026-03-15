@@ -16,9 +16,7 @@ Now featuring an **AI Reading Assistant** that answers questions about the page 
 
 ---
 
-## 🛠️ Installation & Setup
-
-### 1. Prerequisites
+## 🔄 Upgrading to XDG Compliance\n\nDLM now follows XDG Base Directory spec:\n\n| Type | Old Path | New Path |\n|------|----------|----------|\n| Config | `~/.dlm/config.json` | `~/.config/dlm/config.py` |\n| Data | `~/.dlm/data/` | `~/.local/share/dlm/` |\n\n**Automatic migration** happens on first run.\nRun `./migrate.py` for manual/standalone migration (safe, idempotent).\n\nEnv vars: `DLM_DATA_DIR`, `XDG_CONFIG_HOME`, `XDG_DATA_HOME` supported.\n\n---\n\n## 🛠️ Installation & Setup\n\n### 1. Prerequisites
 
 **Required:**
 *   **macOS** (Skim/AppleScript features are macOS-only)
