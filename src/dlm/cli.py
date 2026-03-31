@@ -324,16 +324,16 @@ def print_usage():
 Enhanced Digital Library Search Tool
 
 Usage:
-  python search_enhanced.py <query>                    Search all fields (fuzzy)
-  python search_enhanced.py --title <query>            Search titles only
-  python search_enhanced.py --author <query>           Search authors only
-  python search_enhanced.py --subject <query>          Search subjects only
-  python search_enhanced.py --category <query>         Search categories only
-  python search_enhanced.py --ddc <number>             Search by DDC number (e.g., 780, 006.3)
-  python search_enhanced.py --type <ext> <query>       Filter by file type (pdf, epub)
-  python search_enhanced.py --set-page <n> <query>     Set/save page for the selected file immediately
-  python search_enhanced.py --exact <query>            Disable fuzzy matching (exact only)
-  dlm ask <question>                                   Ask AI about the current page in Skim
+  dlm <query>                    Search all fields (fuzzy)
+  dlm --title <query>            Search titles only
+  dlm --author <query>           Search authors only
+  dlm --subject <query>          Search subjects only
+  dlm --category <query>         Search categories only
+  dlm --ddc <number>             Search by DDC number (e.g., 780, 006.3)
+  dlm --type <ext> <query>       Filter by file type (pdf, epub)
+  dlm --set-page <n> <query>     Set/save page for the selected file immediately
+  dlm --exact <query>            Disable fuzzy matching (exact only)
+  dlm ask <question>             Ask AI about the current page in Skim
 
 DDC Quick Reference:
   000 - Computer Science     400 - Language          700 - Arts

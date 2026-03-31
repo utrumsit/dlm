@@ -12,9 +12,9 @@ import shutil
 import time
 from pathlib import Path
 
-import requests
-
 from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .lookup import lookup_metadata
+from .metafix import write_pdf_metadata, write_epub_metadata
 
 INBOX_DIR = LIBRARY_ROOT / "_Inbox"
 CONFIG_FILE = LIBRARY_ROOT / "sorting_config.json"
@@ -41,27 +41,6 @@ def clean_filename(filename):
     name = re.sub(r"\(.*?\)", "", name)
     name = re.sub(r"\[.*?\]", "", name)
     return name.strip()
-
-
-def get_ddc_from_open_library(query):
-    """Search Open Library for DDC"""
-    try:
-        url = "https://openlibrary.org/search.json"
-        params = {"q": query, "fields": "ddc,title,author_name", "limit": 1}
-        response = requests.get(url, params=params, timeout=10)
-
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("numFound", 0) > 0:
-                doc = data["docs"][0]
-                ddc_list = doc.get("ddc", [])
-                title = doc.get("title", "Unknown")
-                if ddc_list:
-                    return ddc_list[0], title
-    except Exception as e:
-        print(f"  Error querying API: {e}")
-
-    return None, None
 
 
 def determine_destination(ddc, config, filename=None, title=None):
@@ -169,19 +148,43 @@ def main():
 
     for file in files:
         print(f"\nProcessing: {file.name}")
-        query = clean_filename(file.name)
-        print(f"  Searching Open Library for: '{query}'...")
-
-        ddc, title = get_ddc_from_open_library(query)
+        
+        # New enriched lookup
+        result = lookup_metadata(file)
+        
+        ddc = None
+        title = None
+        author = None
+        
+        if result:
+            title = result.get("title")
+            author = result.get("author")
+            ddc = result.get("ddc")
+            print(f"  Found metadata: '{title}' by '{author}'")
+            
+            # Offer to write metadata
+            choice = input(f"  Write metadata to file? [Y/n]: ").strip().lower()
+            if choice == 'y' or choice == '':
+                success = False
+                if file.suffix.lower() == ".pdf":
+                    success = write_pdf_metadata(file, title, author)
+                elif file.suffix.lower() == ".epub":
+                    success = write_epub_metadata(file, title, author)
+                
+                if success:
+                    print("  \u2713 Metadata written.")
+                else:
+                    print("  \u2717 Failed to write metadata.")
 
         if not ddc:
-            print("  -> No DDC found in Open Library.")
+            print(f"  -> No DDC found automatically.")
             manual_ddc = input(
                 "  Enter DDC manually to file this book (or Enter to skip): "
             ).strip()
             if manual_ddc:
                 ddc = manual_ddc
-                title = clean_filename(file.name)
+                if not title:
+                    title = clean_filename(file.name)
 
         if ddc:
             dest_folder = determine_destination(ddc, config, file.name, title)

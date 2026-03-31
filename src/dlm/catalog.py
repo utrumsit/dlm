@@ -8,11 +8,33 @@ import json
 import os
 import re
 import subprocess
+import time
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
 from .settings import CATALOG_FILE, LIBRARY_ROOT, PROGRESS_FILE
+from .lookup import lookup_metadata
+
+METADATA_CACHE_FILE = LIBRARY_ROOT / ".metadata_cache.json"
+
+def load_metadata_cache():
+    """Load metadata cache from JSON"""
+    if METADATA_CACHE_FILE.exists():
+        try:
+            with open(METADATA_CACHE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_metadata_cache(cache):
+    """Save metadata cache to JSON"""
+    try:
+        with open(METADATA_CACHE_FILE, "w") as f:
+            json.dump(cache, f, indent=2)
+    except Exception:
+        pass
 
 # DDC Category mappings
 CATEGORY_INFO = {
@@ -250,6 +272,10 @@ def generate_catalog():
     """Scan library and generate catalog entries"""
     catalog = []
     counter = 1
+    
+    # Load metadata cache
+    metadata_cache = load_metadata_cache()
+    cache_modified = False
 
     # Scan each category
     for category_dir in sorted(LIBRARY_ROOT.iterdir()):
@@ -294,17 +320,42 @@ def generate_catalog():
                 elif file_suffix == ".epub":
                     meta_title, meta_author = extract_epub_metadata(file_path)
 
-                # Use metadata if available, otherwise clean filename
-                title = (
-                    meta_title
-                    if meta_title and len(meta_title) > 3
-                    else clean_title(filename)
-                )
-                author = (
-                    meta_author
-                    if meta_author
-                    else extract_author_from_filename(filename)
-                )
+                # Use metadata if available, otherwise try enriched lookup
+                title = meta_title if meta_title and len(meta_title) > 3 else None
+                author = meta_author if meta_author else None
+                
+                if not title or not author:
+                    # Check cache first
+                    cache_key = str(relative_path)
+                    if cache_key in metadata_cache:
+                        cached = metadata_cache[cache_key]
+                        if not title:
+                            title = cached.get("title")
+                        if not author:
+                            author = cached.get("author")
+                    else:
+                        # Fallback to API lookup
+                        enriched = lookup_metadata(file_path)
+                        if enriched:
+                            if not title:
+                                title = enriched.get("title")
+                            if not author:
+                                author = enriched.get("author")
+                            
+                            # Update cache
+                            metadata_cache[cache_key] = {
+                                "title": enriched.get("title"),
+                                "author": enriched.get("author"),
+                                "source": enriched.get("source"),
+                                "timestamp": time.time()
+                            }
+                            cache_modified = True
+
+                # Fallback to cleaning filename if still nothing
+                if not title:
+                    title = clean_title(filename)
+                if not author:
+                    author = extract_author_from_filename(filename)
 
                 # Determine subjects and DDC
                 cat_info = CATEGORY_INFO[category_name]
@@ -336,6 +387,10 @@ def generate_catalog():
                 }
 
                 catalog.append(entry)
+
+    # Save cache if modified
+    if cache_modified:
+        save_metadata_cache(metadata_cache)
 
     return {"catalog": catalog}
 

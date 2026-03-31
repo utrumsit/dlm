@@ -27,6 +27,7 @@ Now featuring an **AI Reading Assistant** that answers questions about the page 
 
 **Recommended:**
 *   **Skim** (`brew install --cask skim`) — the best PDF reader for macOS. Supports AppleScript page tracking, sidecar annotation files, and `skimnotes` CLI for extracting highlights. DLM falls back to the system default PDF viewer if Skim is not installed.
+*   **exiftool** (`brew install exiftool`) — required by `dlm-metafix` to write metadata (title, author) into PDF files.
 *   **Joplin** (with Web Clipper enabled) — for syncing highlights and annotations to searchable notes.
 
 ### 2. Install DLM
@@ -47,6 +48,7 @@ This installs the following commands system-wide:
 | `dlm-init` | Scaffold the DDC directory structure (`000_Computer_Science/`, `100_Philosophy/`, etc.) and a starter `config.py` in your library root. |
 | `dlm-toc` | Generate a `TOC.md` markdown file listing your entire collection. |
 | `dlm-auth` | Authenticate with Google via OAuth for the AI Reading Assistant. |
+| `dlm-metafix` | Scan library for missing/bad metadata, look up via ISBN/OpenLibrary/Google Books, and write results into files. |
 
 ### 3. Set Your Library Root
 
@@ -119,6 +121,20 @@ In the reading prompt, sync highlights to Joplin:
 ```
 Pulls highlights from Skim (via `skimnotes`) or Apple Books and appends them to a Joplin notebook.
 
+### 🛠️ Retroactive Metadata Fixing
+Scan and fix metadata for existing books:
+```bash
+# Dry run (safe, just shows what it would find)
+dlm-metafix --dry-run
+
+# Run on a specific subfolder
+dlm-metafix --folder 700_Arts/741.5_Cartoons_and_Comics
+
+# Apply all found metadata without prompting
+dlm-metafix --yes
+```
+Uses a cascade lookup: ISBN from PDF text → OpenLibrary → Google Books. Results are written directly into the file's metadata (`exiftool` for PDF, OPF patch for EPUB) and the `catalog.json` is updated.
+
 ---
 
 ## ☁️ Multi-Machine Sync Tips
@@ -151,6 +167,8 @@ dlm/
 │   ├── init.py        # Library scaffolding (dlm-init)
 │   ├── joplin.py      # Joplin Web Clipper integration
 │   ├── llm.py         # Gemini AI reading assistant
+│   ├── lookup.py      # Shared metadata lookup (ISBN, OpenLibrary, Google Books)
+│   ├── metafix.py     # Retroactive metadata fixer CLI
 │   ├── opener.py      # File opening (Skim, Books, system default)
 │   ├── settings.py    # Config loading (~/.config/dlm/ → library root)
 │   ├── sort.py        # Inbox auto-sorting by ISBN/title lookup
