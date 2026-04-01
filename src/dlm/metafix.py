@@ -10,27 +10,35 @@ import zipfile
 from pathlib import Path
 
 from .catalog import extract_pdf_metadata, extract_epub_metadata, generate_catalog
-from .lookup import lookup_metadata
+from .lookup import (
+    lookup_metadata,
+    lookup_openlibrary_title,
+    lookup_google_books_title,
+    lookup_openlibrary_isbn
+)
 from .settings import LIBRARY_ROOT, CATALOG_FILE
 
 def is_bad_metadata(title, author, filepath):
     """
     Determine if metadata is 'bad' and needs fixing.
-    Bad metadata = title is filename stem, or author is blank/Unknown/hash.
     """
     stem = filepath.stem
     
-    # If title is missing or just the filename (case insensitive, ignoring extension)
-    if not title or title.lower() == stem.lower() or title.lower().replace(" ", "") == stem.lower().replace("_", "").replace("-", ""):
+    # If title is missing or looks like a filename
+    if not title or "_" in title or title.lower().endswith((".pdf", ".epub")):
         return True
     
     # If author is missing or looks like junk
-    if not author or author.lower() in ["unknown", "anonymous", "none", "n/a"]:
+    author_is_bad = not author or author.lower() in ["unknown", "anonymous", "none", "n/a", "unknown author"]
+    if not author_is_bad and (re.match(r"^[A-Z0-9]{32}$", author) or len(author) > 100):
+        author_is_bad = True
+        
+    if author_is_bad:
         return True
     
-    # Libgen-style hashes or weird strings
-    if author and (re.match(r"^[A-Z0-9]{32}$", author) or len(author) > 100):
-        return True
+    # If title is exactly the stem (case insensitive) but we already have a good author, 
+    # it might be okay, but usually we want a cleaner title than a filename.
+    # However, to avoid loops, if it doesn't have filename junk like underscores, we can accept it.
     
     return False
 
@@ -158,39 +166,83 @@ def main():
                 
                 # Lookup
                 result = lookup_metadata(filepath)
+                new_title = None
+                new_author = None
+                
                 if result:
                     new_title = result.get("title")
                     new_author = result.get("author")
-                    
-                    print(f"  Found:   '{new_title}' by '{new_author}' ({result.get('source')})")
-                    
-                    if args.dry_run:
-                        continue
-                        
-                    apply = False
-                    if args.yes:
-                        apply = True
+                
+                if args.dry_run:
+                    if result:
+                        print(f"  Found:   '{new_title}' by '{new_author}' ({result.get('source')})")
                     else:
-                        choice = input("  Apply? [Y/n/s(kip all)]: ").strip().lower()
+                        print("  \u2717 No metadata found via online lookup.")
+                    continue
+                        
+                apply = False
+                if args.yes and result:
+                    apply = True
+                else:
+                    while True:
+                        if result:
+                            print(f"  Found:   '{new_title}' by '{new_author}' ({result.get('source')})")
+                            choice = input("  Apply? [Y/n/m(anual)/q(uery)/i(sbn)/s(kip all)]: ").strip().lower()
+                        else:
+                            print("  \u2717 No metadata found.")
+                            choice = input("  Choice: [m(anual)/q(uery)/i(sbn)/n(ext)/s(kip all)]: ").strip().lower()
+
                         if choice == 'y' or choice == '':
+                            if result:
+                                apply = True
+                                break
+                            else:
+                                print("    Please choose an action.")
+                        elif choice == 'n':
+                            apply = False
+                            break
+                        elif choice == 'm':
+                            new_title = input(f"    New title [{new_title or curr_title}]: ").strip() or (new_title or curr_title)
+                            new_author = input(f"    New author [{new_author or curr_author}]: ").strip() or (new_author or curr_author)
                             apply = True
+                            break
+                        elif choice == 'q':
+                            query = input("    New search query: ").strip()
+                            if query:
+                                result = lookup_openlibrary_title(query)
+                                if not result:
+                                    result = lookup_google_books_title(query)
+                                if result:
+                                    new_title = result.get("title")
+                                    new_author = result.get("author")
+                                else:
+                                    print("    \u2717 No results for that query.")
+                        elif choice == 'i':
+                            isbn = input("    Enter ISBN: ").strip().replace("-", "").replace(" ", "")
+                            if isbn:
+                                result = lookup_openlibrary_isbn(isbn)
+                                if result:
+                                    new_title = result.get("title")
+                                    new_author = result.get("author")
+                                else:
+                                    print("    \u2717 No results for that ISBN.")
                         elif choice == 's':
                             print("Exiting...")
                             return
+                        else:
+                            print("    Invalid choice.")
+                
+                if apply and new_title and new_author:
+                    success = False
+                    if filename.endswith(".pdf"):
+                        success = write_pdf_metadata(filepath, new_title, new_author)
+                    else:
+                        success = write_epub_metadata(filepath, new_title, new_author)
                     
-                    if apply:
-                        success = False
-                        if filename.endswith(".pdf"):
-                            success = write_pdf_metadata(filepath, new_title, new_author)
-                        else:
-                            success = write_epub_metadata(filepath, new_title, new_author)
-                        
-                        if success:
-                            print("  \u2713 Updated.")
-                        else:
-                            print("  \u2717 Failed to update.")
-                else:
-                    print("  \u2717 No metadata found.")
+                    if success:
+                        print("  \u2713 Updated.")
+                    else:
+                        print("  \u2717 Failed to update.")
 
     print("\nRegenerating catalog...")
     catalog_data = generate_catalog()

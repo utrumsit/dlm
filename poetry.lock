@@ -890,7 +890,18 @@ files = [
     {file = "websockets-15.0.1.tar.gz", hash = "sha256:82544de02076bafba038ce055ee6412d68da13ab47f0c60cab827346de828dee"},
 ]
 
+[[package]]
+name = "wordninja"
+version = "2.0.0"
+description = "Probabilistically split concatenated words using NLP based on English Wikipedia uni-gram frequencies."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "wordninja-2.0.0.tar.gz", hash = "sha256:1a1cc7ec146ad19d6f71941ee82aef3d31221700f0d8bf844136cf8df79d281a"},
+]
+
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "71f84172b52fa61b3a841b23693bcdc0129859099cd84e4f0b129410cae43ed4"
+content-hash = "92d23f8c30075b35a5f5c6586dd057f90f2ad7efca5af7e5c1ee5d3417c1ddbb"
