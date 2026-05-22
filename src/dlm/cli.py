@@ -248,13 +248,60 @@ def _format_biblio_md(entry):
     return "\n".join(parts)
 
 
+def _sync_highlights_to_joplin(entry, highlights, author_tags):
+    """Sync a list of Highlight objects to Joplin using intelligent merge.
+
+    Only pushes highlights whose uuid hasn't been seen before for this book.
+    Returns True if anything was exported, False if nothing new.
+    """
+    title = entry.get("title", "Notes")
+    book_id = entry.get("id")
+
+    if not highlights:
+        print("No highlights found.")
+        return False
+
+    from .sync_state import load_synced_ids, add_synced_ids
+
+    already = load_synced_ids(book_id) if book_id else set()
+    new = [h for h in highlights if h.uuid not in already]
+
+    if not new:
+        print("No new highlights to sync.")
+        return False
+
+    # Format new highlights as markdown
+    biblio_str = _format_biblio_md(entry)
+    lines = [f"# Notes for {title}", "", biblio_str, "", "---", ""]
+    for hl in new:
+        if hl.text:
+            lines.append(f"> {hl.text}")
+        if hl.note:
+            lines.append(f"\n**Note:** {hl.note}\n")
+        if hl.page is not None:
+            lines.append(f"(page {hl.page})")
+        lines.append("")
+
+    notes_md = "\n".join(lines)
+
+    print(f"Found {len(new)} new highlight(s) (of {len(highlights)} total). Exporting to Joplin...")
+    joplin = JoplinClient()
+    if joplin.notebook_id:
+        joplin.create_or_update_note(title, notes_md, tags=author_tags, append=True)
+        if book_id:
+            add_synced_ids(book_id, [h.uuid for h in new])
+    else:
+        print("Could not find or create Joplin notebook. Please check your config.")
+    return True
+
+
 def export_notes_to_joplin(entry):
     """Extract notes and export them to Joplin.
 
-    For PDFs with a Highlight-list reader (e.g. Sioyek), uses intelligent
-    sync: only new highlights (not seen before) are pushed.
-    For PDFs with a string-based reader (e.g. Skim on Mac), preserves the
-    legacy full-export behaviour.
+    For readers returning list[Highlight] (Sioyek, Foliate), uses intelligent
+    sync: only new highlights are pushed.
+    For legacy readers (Skim on Mac → string, Apple Books → dict), preserves
+    the existing full-export behaviour.
     """
     file_path = entry["file_path"]
     full_path = LIBRARY_ROOT / file_path
@@ -278,60 +325,32 @@ def export_notes_to_joplin(entry):
 
     # ── PDF path ──────────────────────────────────────────────────
     if file_type == "pdf":
-        # Try the new reader-based path first (returns list of Highlight)
         from .readers import get_highlights_from_reader
 
         highlights = get_highlights_from_reader("pdf", full_path)
 
         if isinstance(highlights, list):
-            # New path: list of Highlight objects (e.g. Sioyek)
-            if not highlights:
-                print("No highlights found.")
-                return
+            # Highlight-list reader (Sioyek on Linux, etc.)
+            return _sync_highlights_to_joplin(entry, highlights, author_tags)
 
-            # Intelligent sync: only export new highlights
-            from .sync_state import load_synced_ids, add_synced_ids
-
-            already = load_synced_ids(book_id) if book_id else set()
-            new = [h for h in highlights if h.uuid not in already]
-
-            if not new:
-                print("No new highlights to sync.")
-                return
-
-            # Format new highlights as markdown
-            biblio_str = _format_biblio_md(entry)
-            lines = [f"# Notes for {title}", "", biblio_str, "", "---", ""]
-            for hl in new:
-                if hl.text:
-                    lines.append(f"> {hl.text}")
-                if hl.note:
-                    lines.append(f"\n**Note:** {hl.note}\n")
-                if hl.page is not None:
-                    lines.append(f"(page {hl.page})")
-                lines.append("")
-
-            notes = "\n".join(lines)
-
-            print(f"Found {len(new)} new highlight(s) (of {len(highlights)} total). Exporting to Joplin...")
-            joplin = JoplinClient()
-            if joplin.notebook_id:
-                joplin.create_or_update_note(title, notes, tags=author_tags, append=True)
-                # Record synced IDs
-                if book_id:
-                    add_synced_ids(book_id, [h.uuid for h in new])
-            else:
-                print("Could not find or create Joplin notebook. Please check your config.")
-            return
-
-        # Legacy path: string-based extraction (e.g. Skim on Mac)
+        # Legacy path: string-based extraction (Skim on Mac)
         skim_notes = extract_skim_notes(full_path)
         if skim_notes:
             biblio_str = _format_biblio_md(entry)
             notes = f"# Notes for {title}\n\n{biblio_str}\n---\n\n{skim_notes}"
 
-    # ── EPUB path (Apple Books on macOS) ──────────────────────────
+    # ── EPUB path ─────────────────────────────────────────────────
     elif file_type in ["epub", "mobi", "azw3", "azw"]:
+        # Try the Highlight-list reader first (Foliate on Linux)
+        from .readers import get_highlights_from_reader
+
+        highlights = get_highlights_from_reader(file_type, full_path)
+
+        if isinstance(highlights, list):
+            # Highlight-list reader (Foliate on Linux)
+            return _sync_highlights_to_joplin(entry, highlights, author_tags)
+
+        # Legacy path: Apple Books dict (macOS)
         data = extract_apple_books_notes(title)
         if data and data["notes"]:
             biblio_info = data.get("bibliographical_info", {})

@@ -69,7 +69,8 @@ class SioyekConfig:
 class FoliateConfig:
     """Foliate (Linux EPUB reader) settings."""
     binary: str = "foliate"
-    library_dir: str = "~/.local/share/com.github.johnfactotum.Foliate/library"
+    # Parent dir containing library/uri-store.json and <identifier>.json files
+    library_dir: str = "~/.local/share/com.github.johnfactotum.Foliate"
 
     _dotted_prefix = "foliate"
 

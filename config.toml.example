@@ -36,8 +36,8 @@
 [foliate]
 # Binary name or full path
 # binary = "foliate"
-# Directory containing Foliate's library JSON files
-# library_dir = "~/.local/share/com.github.johnfactotum.Foliate/library"
+# Parent directory containing library/uri-store.json and per-book JSON files
+# library_dir = "~/.local/share/com.github.johnfactotum.Foliate"
 
 # ── Joplin Web Clipper ───────────────────────────────────────────
 [joplin]

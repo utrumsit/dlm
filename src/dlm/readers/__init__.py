@@ -9,6 +9,7 @@ from .base import Reader, Highlight
 from .apple_books import AppleBooksReader
 from .skim import SkimReader
 from .sioyek import SioyekReader
+from .foliate import FoliateReader
 
 
 def get_reader(file_type: str) -> Reader:
@@ -31,7 +32,11 @@ def get_reader(file_type: str) -> Reader:
     system = platform.system()
 
     # Load config values for explicit overrides
-    from ..settings import READERS_PDF, SIOYEK_BINARY, SIOYEK_SHARED_DB
+    from ..settings import (
+        READERS_PDF, READERS_EPUB,
+        SIOYEK_BINARY, SIOYEK_SHARED_DB,
+        FOLIATE_BINARY, FOLIATE_LIBRARY_DIR,
+    )
 
     if ft == "pdf":
         choice = (READERS_PDF or "").lower()
@@ -51,9 +56,19 @@ def get_reader(file_type: str) -> Reader:
 
     # EPUB branch
     if ft in ("epub", "mobi", "azw3", "azw"):
+        choice = (READERS_EPUB or "").lower()
+        if not choice:
+            choice = "apple_books" if system == "Darwin" else "foliate"
+
+        if choice in ("apple_books", "apple-books"):
+            return AppleBooksReader()
+        if choice == "foliate":
+            return FoliateReader(binary=FOLIATE_BINARY, library_dir=FOLIATE_LIBRARY_DIR)
+
+        # Unknown explicit choice — fall back to platform default
         if system == "Darwin":
             return AppleBooksReader()
-        # Phase 5 will add FoliateReader for Linux
+        return FoliateReader(binary=FOLIATE_BINARY, library_dir=FOLIATE_LIBRARY_DIR)
 
     raise NotImplementedError(f"No reader configured for {ft} on {system}")
 

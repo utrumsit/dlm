@@ -78,7 +78,7 @@ _config_store = {
     "SIOYEK_BINARY": "sioyek",
     "SIOYEK_SHARED_DB": "~/.local/share/sioyek/shared.db",
     "FOLIATE_BINARY": "foliate",
-    "FOLIATE_LIBRARY_DIR": "~/.local/share/com.github.johnfactotum.Foliate/library",
+    "FOLIATE_LIBRARY_DIR": "~/.local/share/com.github.johnfactotum.Foliate",
 }
 
 
