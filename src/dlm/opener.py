@@ -10,7 +10,8 @@ from datetime import datetime
 from pathlib import Path
 
 from .data import load_progress, save_progress
-from .settings import LIBRARY_ROOT, SKIM_APP_PATH
+from .readers import get_reader
+from .settings import LIBRARY_ROOT
 
 
 def open_file(entry, set_page=None):
@@ -41,55 +42,27 @@ def open_file(entry, set_page=None):
     system = platform.system()
 
     try:
+        # Try the appropriate reader for this file type
+        reader = get_reader(file_type)
+        reader.open(full_path)
+        print(f"Opening: {entry.get('title', full_path.name)}")
+    except NotImplementedError:
+        # Fall back to system default opener
         if system == "Darwin":
-            _open_macos(full_path, file_type, entry)
+            subprocess.run(["open", str(full_path)])
         elif system == "Windows":
             subprocess.run(["start", str(full_path)], shell=True)
         else:
             subprocess.run(["xdg-open", str(full_path)])
-
         print(f"Opening: {entry.get('title', full_path.name)}")
-
-        # Update reading progress
-        _update_progress(file_id, set_page)
-
-        return True
     except Exception as e:
         print(f"Error opening file: {e}")
         return False
 
+    # Update reading progress
+    _update_progress(file_id, set_page)
 
-def _open_macos(full_path, file_type, entry):
-    """macOS-specific file opening logic."""
-    if file_type == "pdf":
-        _open_pdf_skim(full_path)
-    elif file_type in ["epub", "mobi", "azw3", "azw"]:
-        _open_ebook(full_path, entry)
-    else:
-        subprocess.run(["open", str(full_path)])
-
-
-def _open_pdf_skim(full_path):
-    """Open PDF with Skim via AppleScript (falls back to system default)."""
-    skim_path = Path(SKIM_APP_PATH) / "Contents" / "MacOS" / "Skim"
-    if skim_path.exists():
-        subprocess.Popen(
-            [
-                "osascript",
-                "-e", f'tell application "{SKIM_APP_PATH}"',
-                "-e", "activate",
-                "-e", f'open POSIX file "{full_path}"',
-                "-e", "end tell",
-            ]
-        )
-    else:
-        subprocess.run(["open", str(full_path)])
-
-
-def _open_ebook(full_path, entry):
-    """Open ebook with Apple Books."""
-    print(f"Opening: {entry.get('title', full_path.name)} (Apple Books)")
-    subprocess.run(["open", "-a", "Books", str(full_path)])
+    return True
 
 
 def _update_progress(file_id, set_page=None):

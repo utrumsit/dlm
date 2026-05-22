@@ -1,174 +1,47 @@
 # note_extractor.py
+"""Annotation extraction utilities.
 
-import glob
-import platform
-import shutil
-import sqlite3
-import subprocess
+This module provides thin wrappers that delegate to the reader classes.
+"""
+
 from pathlib import Path
 
-from .settings import SKIM_APP_PATH
+from .readers import get_reader
+
 
 def extract_skim_notes(pdf_path):
     """Extract notes from a PDF using Skim's skimnotes command-line tool.
-    Checks both extended attributes and .skim sidecar files.
+
+    This is a thin wrapper that delegates to SkimReader.extract_annotations().
+
+    Args:
+        pdf_path: Path to the PDF file
+
+    Returns:
+        Extracted notes as text string, or None if not available
     """
-    if platform.system() != "Darwin":
-        return None
-
     try:
-        # Try config path first, then PATH
-        skimnotes_path = Path(SKIM_APP_PATH) / "Contents" / "SharedSupport" / "skimnotes"
-        if not skimnotes_path.exists():
-            skimnotes_path = shutil.which("skimnotes")
-        if not skimnotes_path:
-            print("skimnotes tool not found.")
-            return None
-        skimnotes_path = str(skimnotes_path)
-
-        # 1. Try to get from extended attributes first
-        result = subprocess.run(
-            [skimnotes_path, "get", "-format", "text", str(pdf_path), "-"],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return result.stdout
-
-        # 2. If empty, check for a .skim sidecar file
-        sidecar_path = Path(pdf_path).with_suffix(".skim")
-        if sidecar_path.exists():
-            print(f"Found sidecar notes file: {sidecar_path.name}")
-            result = subprocess.run(
-                [skimnotes_path, "get", "-format", "text", str(sidecar_path), "-"],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                return result.stdout
-
-        return None
-    except Exception as e:
-        print(f"An error occurred while extracting Skim notes: {e}")
+        reader = get_reader("pdf")
+        return reader.extract_annotations(Path(pdf_path))
+    except NotImplementedError:
         return None
 
 
 def extract_apple_books_notes(book_title):
-    """Extract notes from the Apple Books database for a given book title."""
-    if platform.system() != "Darwin":
-        return None
+    """Extract notes from the Apple Books database for a given book title.
 
-    base_path_annotation = (
-        Path.home()
-        / "Library/Containers/com.apple.iBooksX/Data/Documents/AEAnnotation/"
-    )
-    db_files_annotation = glob.glob(str(base_path_annotation / "AEAnnotation*.sqlite"))
+    This is a thin wrapper that delegates to AppleBooksReader.extract_annotations_by_title().
 
-    base_path_library = (
-        Path.home() / "Library/Containers/com.apple.iBooksX/Data/Documents/BKLibrary/"
-    )
-    db_files_library = glob.glob(str(base_path_library / "BKLibrary-1-*.sqlite"))
+    Args:
+        book_title: Title of the book to look up
 
-    if not db_files_annotation or not db_files_library:
-        print("Apple Books database(s) not found.")
-        return None
-
-    db_path_annotation = db_files_annotation[0]  # Use the first match
-    db_path_library = db_files_library[0]  # Use the first match
-    print(f"Found Apple Books annotation database at: {db_path_annotation}")
-    print(f"Found Apple Books library database at: {db_path_library}")
-
-    notes = []
+    Returns:
+        Dict with bibliographical_info and notes, or None if not available
+    """
     try:
-        con_annotation = sqlite3.connect(f"file:{db_path_annotation}?mode=ro", uri=True)
-        con_library = sqlite3.connect(f"file:{db_path_library}?mode=ro", uri=True)
-        cur_annotation = con_annotation.cursor()
-        cur_library = con_library.cursor()
-
-        # Find the asset ID and bibliographical info for the given book title
-        cur_library.execute(
-            """
-            SELECT ZASSETID, ZTITLE, ZAUTHOR, ZBOOKDESCRIPTION, ZGENRE, ZLANGUAGE, ZPAGECOUNT, ZRELEASEDATE 
-            FROM ZBKLIBRARYASSET WHERE ZTITLE = ?
-        """,
-            (book_title,),
-        )
-        asset_info = cur_library.fetchone()
-
-        if not asset_info:
-            # Let's try a fuzzy match if the exact title fails
-            cur_library.execute(
-                """
-                SELECT ZASSETID, ZTITLE, ZAUTHOR, ZBOOKDESCRIPTION, ZGENRE, ZLANGUAGE, ZPAGECOUNT, ZRELEASEDATE 
-                FROM ZBKLIBRARYASSET WHERE ZTITLE LIKE ?
-            """,
-                (f"%{book_title}%",),
-            )
-            asset_info = cur_library.fetchone()
-
-        if not asset_info:
-            print(f"Book '{book_title}' not found in Apple Books database.")
-            con_annotation.close()
-            con_library.close()
-            return None
-
-        (
-            asset_id,
-            found_title,
-            found_author,
-            description,
-            genre,
-            language,
-            page_count,
-            release_date,
-        ) = asset_info
-
-        bibliographical_info = {
-            "title": found_title,
-            "author": found_author,
-            "description": description,
-            "genre": genre,
-            "language": language,
-            "page_count": page_count,
-            "release_date": release_date,
-        }
-
-        # Query for annotations
-        query = """
-        SELECT
-            ZANNOTATIONREPRESENTATIVETEXT,
-            ZANNOTATIONSELECTEDTEXT,
-            ZANNOTATIONNOTE,
-            ZANNOTATIONMODIFICATIONDATE
-        FROM ZAEANNOTATION
-        WHERE ZANNOTATIONASSETID = ? AND ZANNOTATIONDELETED = 0
-        ORDER BY ZANNOTATIONMODIFICATIONDATE
-        """
-
-        for row in cur_annotation.execute(query, (asset_id,)):
-            representative_text, selected_text, note, modification_date = row
-            text_to_use = selected_text or representative_text or ""
-            note_text = note or ""
-            if text_to_use or note_text:
-                notes.append(
-                    {
-                        "highlight": text_to_use.strip(),
-                        "note": note_text.strip(),
-                        "modification_date": modification_date,
-                    }
-                )
-
-        con_annotation.close()
-        con_library.close()
-
-        return {"bibliographical_info": bibliographical_info, "notes": notes}
-
-    except sqlite3.OperationalError as e:
-        print(f"Error accessing Apple Books database: {e}")
-        print("Please ensure Apple Books is closed and try again.")
-        return None
-    except Exception as e:
-        print(f"An error occurred while extracting Apple Books notes: {e}")
+        reader = get_reader("epub")
+        return reader.extract_annotations_by_title(book_title)
+    except NotImplementedError:
         return None
 
 
