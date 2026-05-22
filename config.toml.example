@@ -1,0 +1,66 @@
+# DLM Configuration (TOML)
+# ─────────────────────────
+# Place this file at:  ~/.config/dlm/config.toml
+#
+# All values shown are defaults. Commented-out lines are optional.
+# Blank or commented keys fall back to the built-in defaults.
+#
+# Legacy config.py users: run `dlm config migrate` to auto-convert.
+
+# ── Library ──────────────────────────────────────────────────────
+[library]
+# Root directory of your digital library (DDC folders, catalog.json, etc.)
+# Falls back to $DLM_LIBRARY_ROOT environment variable if empty.
+# root = ""
+
+# ── Readers ──────────────────────────────────────────────────────
+[readers]
+# PDF reader (empty = platform default: Skim on macOS, Sioyek on Linux)
+# pdf = ""
+# EPUB reader (empty = platform default: Apple Books on macOS, Foliate on Linux)
+# epub = ""
+
+# ── Skim (macOS PDF reader) ──────────────────────────────────────
+[skim]
+# Path to Skim.app bundle
+# app_path = "/Applications/Skim.app"
+
+# ── Sioyek (Linux / macOS PDF reader) ────────────────────────────
+[sioyek]
+# Binary name or full path
+# binary = "sioyek"
+# Path to Sioyek's SQLite highlights database
+# shared_db = "~/.local/share/sioyek/shared.db"
+
+# ── Foliate (Linux EPUB reader) ──────────────────────────────────
+[foliate]
+# Binary name or full path
+# binary = "foliate"
+# Directory containing Foliate's library JSON files
+# library_dir = "~/.local/share/com.github.johnfactotum.Foliate/library"
+
+# ── Joplin Web Clipper ───────────────────────────────────────────
+[joplin]
+# API token from Joplin → Settings → Web Clipper → Advanced Options
+# token = ""
+# Joplin API endpoint (default: local instance)
+# api_url = "http://localhost:41184"
+# Notebook name for exported notes
+# notebook_name = "Digital Library Notes"
+
+# ── LLM (AI Reading Assistant) ───────────────────────────────────
+[llm]
+# Backend (only "gemini" is supported currently)
+# backend = "gemini"
+
+[llm.gemini]
+# Option 1: API key (get from https://aistudio.google.com/app/apikey)
+# api_key = ""
+#
+# Option 2: OAuth (recommended — uses your Google account)
+#   Create credentials at https://console.cloud.google.com/apis/credentials
+#   Then run: dlm-auth
+# client_id = ""
+# client_secret = ""
+#
+# API key can also be set via $GOOGLE_API_KEY environment variable.

@@ -1,5 +1,10 @@
-# DLM Configuration
-# Place this file at: ~/.config/dlm/config.py (recommended)
+# DEPRECATED — use config.toml instead.
+# New installations should use config.toml.example.
+# To migrate: `dlm config migrate` or rename your config.py to config.toml
+#   and update the format (see config.toml.example).
+#
+# DLM Configuration (legacy Python format)
+# Place this file at: ~/.config/dlm/config.py
 # Or in your library root (legacy, not recommended for cloud-synced libraries)
 #
 # The local path (~/.config/dlm/) is preferred because:
