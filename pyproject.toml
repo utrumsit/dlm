@@ -16,6 +16,7 @@ google-auth-oauthlib = ">=1.0.0"
 wordninja = "^2.0.0"
 tomli = {version = "^2.0", python = "<3.11"}
 tomli-w = "^1.0"
+pyperclip = "^1.8"
 
 [tool.poetry.scripts]
 dlm = "dlm.cli:main"
@@ -26,6 +27,7 @@ dlm-toc = "dlm.toc:main"
 dlm-auth = "dlm.auth:auth_command"
 dlm-metafix = "dlm.metafix:main"
 dlm-config = "dlm.config_cli:main"
+dlm-doctor = "dlm.doctor:main"
 
 [build-system]
 requires = ["poetry-core"]

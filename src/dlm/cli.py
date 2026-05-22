@@ -236,42 +236,101 @@ def open_file(entry, set_page=None):
     return True
 
 
+def _format_biblio_md(entry):
+    """Build a markdown biblio header from a catalog entry."""
+    parts = []
+    if entry.get("author"):
+        parts.append(f"**Author:** {entry['author']}")
+    if entry.get("ddc"):
+        parts.append(f"**DDC:** {entry['ddc']}")
+    if entry.get("subjects"):
+        parts.append(f"**Subjects:** {', '.join(entry['subjects'])}")
+    return "\n".join(parts)
+
+
 def export_notes_to_joplin(entry):
-    """Extract notes and export them to Joplin."""
+    """Extract notes and export them to Joplin.
+
+    For PDFs with a Highlight-list reader (e.g. Sioyek), uses intelligent
+    sync: only new highlights (not seen before) are pushed.
+    For PDFs with a string-based reader (e.g. Skim on Mac), preserves the
+    legacy full-export behaviour.
+    """
     file_path = entry["file_path"]
     full_path = LIBRARY_ROOT / file_path
     file_type = entry.get("file_type", "").lower()
     title = entry.get("title", "Notes")
     author = entry.get("author", "")
+    book_id = entry.get("id")
 
     # Create author tag
     author_tags = []
     if author:
         names = author.split(" ")
         if len(names) > 1:
-            # Assume last name is the last part, first name is the rest
             last_name = names[-1]
-            first_name_parts = names[:-1]
-            # Handle multi-word first names
-            first_name = "-".join(first_name_parts)
+            first_name = "-".join(names[:-1])
             author_tags.append(f"{last_name.lower()}-{first_name.lower()}")
         else:
             author_tags.append(author.lower())
 
     notes = None
+
+    # ── PDF path ──────────────────────────────────────────────────
     if file_type == "pdf":
+        # Try the new reader-based path first (returns list of Highlight)
+        from .readers import get_highlights_from_reader
+
+        highlights = get_highlights_from_reader("pdf", full_path)
+
+        if isinstance(highlights, list):
+            # New path: list of Highlight objects (e.g. Sioyek)
+            if not highlights:
+                print("No highlights found.")
+                return
+
+            # Intelligent sync: only export new highlights
+            from .sync_state import load_synced_ids, add_synced_ids
+
+            already = load_synced_ids(book_id) if book_id else set()
+            new = [h for h in highlights if h.uuid not in already]
+
+            if not new:
+                print("No new highlights to sync.")
+                return
+
+            # Format new highlights as markdown
+            biblio_str = _format_biblio_md(entry)
+            lines = [f"# Notes for {title}", "", biblio_str, "", "---", ""]
+            for hl in new:
+                if hl.text:
+                    lines.append(f"> {hl.text}")
+                if hl.note:
+                    lines.append(f"\n**Note:** {hl.note}\n")
+                if hl.page is not None:
+                    lines.append(f"(page {hl.page})")
+                lines.append("")
+
+            notes = "\n".join(lines)
+
+            print(f"Found {len(new)} new highlight(s) (of {len(highlights)} total). Exporting to Joplin...")
+            joplin = JoplinClient()
+            if joplin.notebook_id:
+                joplin.create_or_update_note(title, notes, tags=author_tags, append=True)
+                # Record synced IDs
+                if book_id:
+                    add_synced_ids(book_id, [h.uuid for h in new])
+            else:
+                print("Could not find or create Joplin notebook. Please check your config.")
+            return
+
+        # Legacy path: string-based extraction (e.g. Skim on Mac)
         skim_notes = extract_skim_notes(full_path)
         if skim_notes:
-            # Construct biblio info from entry
-            biblio_str = ""
-            if entry.get("author"):
-                biblio_str += f"**Author:** {entry['author']}\n"
-            if entry.get("ddc"):
-                biblio_str += f"**DDC:** {entry['ddc']}\n"
-            if entry.get("subjects"):
-                biblio_str += f"**Subjects:** {', '.join(entry['subjects'])}\n"
-
+            biblio_str = _format_biblio_md(entry)
             notes = f"# Notes for {title}\n\n{biblio_str}\n---\n\n{skim_notes}"
+
+    # ── EPUB path (Apple Books on macOS) ──────────────────────────
     elif file_type in ["epub", "mobi", "azw3", "azw"]:
         data = extract_apple_books_notes(title)
         if data and data["notes"]:
@@ -306,6 +365,7 @@ def export_notes_to_joplin(entry):
                     formatted_notes.append(f"\n**Note:** {note['note']}\n")
             notes = "\n".join(formatted_notes)
 
+    # ── Final export ──────────────────────────────────────────────
     if notes:
         print("Found notes. Exporting to Joplin...")
         joplin = JoplinClient()

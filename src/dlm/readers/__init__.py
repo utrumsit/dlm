@@ -8,10 +8,15 @@ from .base import Reader, Highlight
 # Import concrete readers
 from .apple_books import AppleBooksReader
 from .skim import SkimReader
+from .sioyek import SioyekReader
 
 
 def get_reader(file_type: str) -> Reader:
     """Get the appropriate reader for a file type.
+
+    Dispatches based on:
+      1. Explicit config override (readers.pdf / readers.epub in config.toml)
+      2. Platform defaults (Skim on macOS, Sioyek on Linux)
 
     Args:
         file_type: The file type (e.g., "pdf", "epub", "mobi")
@@ -25,13 +30,31 @@ def get_reader(file_type: str) -> Reader:
     ft = file_type.lower()
     system = platform.system()
 
-    if system == "Darwin":
-        if ft == "pdf":
-            return SkimReader()
-        if ft in ("epub", "mobi", "azw3", "azw"):
-            return AppleBooksReader()
+    # Load config values for explicit overrides
+    from ..settings import READERS_PDF, SIOYEK_BINARY, SIOYEK_SHARED_DB
 
-    # No reader available - fall back to xdg-open on Linux
+    if ft == "pdf":
+        choice = (READERS_PDF or "").lower()
+        if not choice:
+            # Platform defaults
+            choice = "skim" if system == "Darwin" else "sioyek"
+
+        if choice == "skim":
+            return SkimReader()
+        if choice == "sioyek":
+            return SioyekReader(binary=SIOYEK_BINARY, shared_db=SIOYEK_SHARED_DB)
+
+        # Unknown explicit reader — fall back to platform default
+        if system == "Darwin":
+            return SkimReader()
+        return SioyekReader(binary=SIOYEK_BINARY, shared_db=SIOYEK_SHARED_DB)
+
+    # EPUB branch
+    if ft in ("epub", "mobi", "azw3", "azw"):
+        if system == "Darwin":
+            return AppleBooksReader()
+        # Phase 5 will add FoliateReader for Linux
+
     raise NotImplementedError(f"No reader configured for {ft} on {system}")
 
 
@@ -61,7 +84,7 @@ def open_with_fallback(file_type: str, path: Path, page: Optional[int] = None) -
             return False
 
 
-def get_highlights_from_reader(file_type: str, path: Path) -> Optional[list[Highlight]]:
+def get_highlights_from_reader(file_type: str, path: Path) -> Optional[list]:
     """Extract highlights from a file using the appropriate reader.
 
     Args:

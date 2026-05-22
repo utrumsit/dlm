@@ -73,6 +73,12 @@ _config_store = {
     "GOOGLE_API_KEY": os.environ.get("GOOGLE_API_KEY", ""),
     "GOOGLE_CLIENT_ID": "",
     "GOOGLE_CLIENT_SECRET": "",
+    "READERS_PDF": "",
+    "READERS_EPUB": "",
+    "SIOYEK_BINARY": "sioyek",
+    "SIOYEK_SHARED_DB": "~/.local/share/sioyek/shared.db",
+    "FOLIATE_BINARY": "foliate",
+    "FOLIATE_LIBRARY_DIR": "~/.local/share/com.github.johnfactotum.Foliate/library",
 }
 
 
@@ -89,6 +95,24 @@ def _apply_toml_to_store(toml_data: dict):
     skim = toml_data.get("skim", {})
     if skim.get("app_path"):
         _config_store["SKIM_APP_PATH"] = skim["app_path"]
+
+    readers = toml_data.get("readers", {})
+    if readers.get("pdf"):
+        _config_store["READERS_PDF"] = readers["pdf"]
+    if readers.get("epub"):
+        _config_store["READERS_EPUB"] = readers["epub"]
+
+    sioyek = toml_data.get("sioyek", {})
+    if sioyek.get("binary"):
+        _config_store["SIOYEK_BINARY"] = sioyek["binary"]
+    if sioyek.get("shared_db"):
+        _config_store["SIOYEK_SHARED_DB"] = sioyek["shared_db"]
+
+    foliate = toml_data.get("foliate", {})
+    if foliate.get("binary"):
+        _config_store["FOLIATE_BINARY"] = foliate["binary"]
+    if foliate.get("library_dir"):
+        _config_store["FOLIATE_LIBRARY_DIR"] = foliate["library_dir"]
 
     gemini = toml_data.get("llm", {}).get("gemini", {})
     if gemini.get("api_key"):
