@@ -95,7 +95,9 @@ def _check_catalog():
     try:
         with open(catalog_path) as f:
             data = json.load(f)
-        count = len(data) if isinstance(data, list) else 0
+        # current format: {"catalog": [...]}; tolerate plain list too
+        entries = data.get("catalog") if isinstance(data, dict) else data
+        count = len(entries) if isinstance(entries, list) else 0
         check("Catalog", "ok", f"{count} entries")
     except json.JSONDecodeError:
         check("Catalog", "fail", "catalog.json is invalid JSON",
