@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "dlm"
-version = "0.1.0"
-description = "Digital Library Manager: CLI for managing and reading a personal DDC library"
+version = "0.2.0"
+description = "Cross-platform CLI for managing a personal DDC-organized digital library"
 authors = ["Karl Schudt"]
 license = "MIT"
 readme = "README.md"

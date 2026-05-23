@@ -1,87 +1,118 @@
 # AGENTS.md - Digital Library Manager (DLM)
 
-## ⚠️ Multi-Machine Directory
-This code directory is synced via **Syncthing** across three machines. Any agent reading this file may be on any of them. Detect the current host with `hostname -s` or `platform.node().split('.')[0]` before making machine-specific assumptions.
+## Multi-Machine Directory
+This code directory is synced via **Syncthing** across multiple machines (macOS + Linux). Any agent reading this file may be on any of them. Detect the current host with `hostname -s` or `platform.node().split('.')[0]` before making machine-specific assumptions.
 
-| Hostname | Machine | Skim Path | Notes |
-|----------|---------|-----------|-------|
-| `Karls-MacBook-Pro` | MacBook Pro | `/Applications/Skim.app` | |
-| `Karls-Mac-mini` | Mac mini | `/Applications/Skim.app` | |
-| `JOSEPHs-iMac` | M1 iMac | `/Volumes/frodo/Applications/Skim.app` | Homebrew cask apps install to `/Volumes/frodo/` |
+**Machine-specific notes:** if `AGENTS.local.md` exists alongside this file, read it for host-by-host details (reader paths, per-machine quirks). That file is gitignored but Syncthing-replicated.
 
 ### What Syncs (and What Doesn't)
 - **Synced (Syncthing):** All code in `src/dlm/`, `pyproject.toml`, `poetry.lock`, `AGENTS.md`, `.stignore`, `README.md`
 - **NOT synced (`.stignore`):** `.venv*/`, `__pycache__/`, `dist/`, `build/`, `.DS_Store`, editor configs
-- **NOT synced (local per-machine):** `~/.config/dlm/config.py`, Poetry virtualenvs (in `~/Library/Caches/pypoetry/virtualenvs/`)
+- **NOT synced (local per-machine):** `~/.config/dlm/config.toml`, Poetry virtualenvs
 - **Separate sync (OneDrive via rclone):** Library data at `DLM_LIBRARY_ROOT` — books, `catalog.json`, `reading_progress.json`
 
 ### Setup on a New/Refreshed Machine
 1. Syncthing delivers the code automatically
-2. Create local config: `mkdir -p ~/.config/dlm && cp config.py.example ~/.config/dlm/config.py` — then edit with machine-specific values (Joplin token, Skim path, Google credentials)
-3. Set `DLM_LIBRARY_ROOT` in your shell profile (points to the OneDrive-synced library)
-4. `poetry install` (creates a venv in Poetry's cache, not in-project)
-5. Verify: `poetry run dlm --help`
+2. Create local config: `mkdir -p ~/.config/dlm && cp config.toml.example ~/.config/dlm/config.toml` — then edit with machine-specific values
+3. (Optional) If a legacy `config.py` exists, run `dlm-config migrate` to auto-convert to TOML
+4. Set `DLM_LIBRARY_ROOT` in your shell profile
+5. `pipx install -e .` or `poetry install`
+6. Verify: `dlm-doctor`
 
 ## What This Is
-A CLI toolset for managing a personal digital library using Dewey Decimal Classification (DDC). Search via fzf, open PDFs in Skim / EPUBs in Apple Books, extract annotations, and sync notes to Joplin.
+A cross-platform CLI toolset for managing a personal digital library using Dewey Decimal Classification (DDC). Search via fzf, open PDFs in Skim (macOS) or Sioyek (Linux), EPUBs in Apple Books (macOS) or Foliate (Linux), extract annotations, and sync notes to Joplin.
 
 ## Architecture: Code vs Data
 **Critical concept:** The code repo and the library data are separate. The code lives here (synced by Syncthing). The actual books, catalog, and config live at `DLM_LIBRARY_ROOT` (synced separately via OneDrive/rclone).
 
 - **Code (this directory):** `src/dlm/` — the Python package
 - **Data (`DLM_LIBRARY_ROOT`):** DDC folders (`000_Computer_Science/`, etc.), `catalog.json`, `reading_progress.json`, `_Inbox/`
-- **Config (`~/.config/dlm/config.py`):** Local per-machine. Joplin tokens, Skim path, Google API credentials. Never synced.
+- **Config (`~/.config/dlm/config.toml`):** Local per-machine. Joplin tokens, reader paths, Google API credentials. Never synced.
 
 Never hardcode paths to the library. Always use `LIBRARY_ROOT` from `settings.py`.
+
+## Architecture: Key Abstractions
+
+### Readers (`src/dlm/readers/`)
+Platform-agnostic reader abstraction. Each reader implements `Reader` (abstract base class):
+- `open(path, page)` — launch the reader app with the file
+- `extract_annotations(path)` → `list[Highlight]` — extract highlights/notes
+- `is_available()` — check if the reader binary exists
+
+`get_reader(file_type)` dispatches based on config + platform:
+- PDF: SkimReader (macOS) / SioyekReader (Linux)
+- EPUB: AppleBooksReader (macOS) / FoliateReader (Linux)
+- Config override: `readers.pdf = "sioyek"` etc.
+
+### LLM Backends (`src/dlm/llm/`)
+Pluggable LLM backend abstraction. Each backend implements `LLMBackend`:
+- `ask(context, question)` → `str` — send a question about context text
+
+`get_backend()` dispatches based on `llm.backend` config (default: "gemini").
+v1 ships only `GeminiBackend`. Other backends can be added later.
+
+### Config (`settings.py` + `config_schema.py`)
+TOML config at `~/.config/dlm/config.toml`. Schema defined as dataclasses in `config_schema.py`. Settings exported as module-level names via `__getattr__` for backward compatibility. Legacy `config.py` auto-migrates on first run.
 
 ## Module Map
 | Module | Purpose |
 |--------|---------|
-| `cli.py` | Main entry point (`dlm`). Search, open files, export notes to Joplin |
+| `cli.py` | Main entry point (`dlm`). Search, open, reading mode, `ask` subcommand |
+| `config_cli.py` | `dlm config` subcommands: show, check, set, migrate |
+| `config_schema.py` | TOML config dataclass schema + dotted-path navigation |
+| `settings.py` | Config loading (TOML first, legacy Python fallback), env overrides |
+| `doctor.py` | `dlm-doctor` diagnostic command (11 checks) |
 | `fzf.py` | Interactive fzf-based search with preview panel |
-| `opener.py` | Unified file opener — Skim for PDFs, Apple Books for EPUBs, system default for others. Progress tracking. |
+| `opener.py` | Unified file opener — delegates to `readers/` package |
+| `readers/` | Reader abstraction (Skim, Apple Books, Sioyek, Foliate) |
+| `llm/` | LLM backend abstraction (v1: Gemini only) |
+| `auth/` | Google OAuth2 flow for Gemini |
 | `data.py` | Shared data access — `load_catalog()`, `load_progress()`, `save_progress()` |
 | `catalog.py` | Scans library folders, extracts PDF/EPUB metadata, builds `catalog.json` |
 | `sort.py` | Auto-sorts `_Inbox/` files using Open Library DDC lookup |
-| `settings.py` | Loads config: `~/.config/dlm/config.py` first, falls back to `DLM_LIBRARY_ROOT/config.py` (legacy). Defines `LIBRARY_ROOT` and all settings. |
-| `extractor.py` | Extracts annotations from Skim (PDF) and Apple Books (EPUB) |
+| `extractor.py` | Thin wrappers delegating to reader classes |
+| `sync_state.py` | Tracks which highlight IDs have been synced to Joplin |
 | `joplin.py` | Joplin Web Clipper API client with smart note merging |
 | `toc.py` | Generates `TOC.md` from library structure |
 | `init.py` | Scaffolds a new library with DDC folders |
-| `context.py` | Reading context extraction (Skim active page scraping) |
-| `llm.py` | Gemini API client for reading assistant |
-| `auth.py` | Google OAuth2 flow for Gemini (alternative to API key) |
+| `lookup.py` | Shared metadata lookup (ISBN, OpenLibrary, Google Books) |
+| `metafix.py` | Retroactive metadata fixer CLI |
 
 ## Entry Points (pyproject.toml)
 | Command | Module |
 |---------|--------|
 | `dlm` | `cli:main` |
-| `dlm ask "question"` | `cli:main` (subcommand) |
+| `dlm ask "question"` | `cli:main` (subcommand, clipboard/file/stdin) |
 | `dlm-catalog` | `catalog:main` |
 | `dlm-sort` | `sort:main` |
 | `dlm-toc` | `toc:main` |
 | `dlm-init` | `init:main` |
 | `dlm-auth` | `auth:auth_command` |
+| `dlm-config` | `config_cli:main` |
+| `dlm-doctor` | `doctor:main` |
+| `dlm-metafix` | `metafix:main` |
 
 ## Package Manager
-**Poetry.** Virtualenvs live in Poetry's cache (`~/Library/Caches/pypoetry/virtualenvs/`), NOT in-project. This avoids Syncthing conflicts between machines.
+**Poetry** (or pipx for end-users). Virtualenvs live in Poetry's cache, NOT in-project. This avoids Syncthing conflicts between machines.
 
 - `poetry install` — set up on a new machine
 - `poetry run dlm` — run without activating venv
-- `poetry shell` — activate venv interactively
+- `pipx install -e .` — end-user install (system-wide commands)
 
-## Configuration (`~/.config/dlm/config.py`)
-This file is **local per machine** — never synced. Settings loaded by `settings.py`:
+## Configuration (`~/.config/dlm/config.toml`)
+This file is **local per machine** — never synced. TOML format with sections:
 
-| Setting | Purpose | Machine-specific? |
-|---------|---------|-------------------|
-| `JOPLIN_TOKEN` | Web Clipper API token (keyed by hostname) | Yes |
-| `JOPLIN_API_URL` | Joplin API endpoint (default `http://localhost:41184`) | No |
-| `JOPLIN_NOTEBOOK_NAME` | Target notebook for note export | No |
-| `SKIM_APP_PATH` | Path to Skim.app (varies by machine — see table above) | Yes |
-| `GOOGLE_API_KEY` | Gemini API key (or use env var) | No |
-| `GOOGLE_CLIENT_ID` | OAuth client ID (for `dlm-auth`) | No |
-| `GOOGLE_CLIENT_SECRET` | OAuth client secret (for `dlm-auth`) | No |
+| Section | Key | Purpose |
+|---------|-----|---------|
+| `[joplin]` | `token`, `api_url`, `notebook_name` | Joplin Web Clipper |
+| `[llm]` | `backend` | LLM backend (default: "gemini") |
+| `[llm.gemini]` | `api_key`, `client_id`, `client_secret` | Google Gemini credentials |
+| `[readers]` | `pdf`, `epub` | Reader override (empty = platform default) |
+| `[skim]` | `app_path` | Skim.app bundle path (macOS) |
+| `[sioyek]` | `binary`, `shared_db` | Sioyek binary and highlights DB |
+| `[foliate]` | `binary`, `library_dir` | Foliate binary and library directory |
+
+Legacy `config.py` users: run `dlm-config migrate` to auto-convert.
 
 ## DDC Folder Convention
 Top-level folders follow `NNN_Name` pattern matching Dewey centuries:
@@ -96,14 +127,13 @@ New categories must be added to **both** `CATEGORY_INFO` (top-level) or `DDC_SUB
 ## Known Issues / Tech Debt
 - No graceful handling when `catalog.json` doesn't exist (crashes; should suggest running `dlm-catalog`)
 - No test suite beyond `test_lookup.py` (manual one-off)
-- `JOSEPHs-iMac` Joplin token not yet configured
+- Per-machine setup TODOs (e.g. unfilled tokens) live in `AGENTS.local.md`, not here
 
 ## Testing
 No test suite yet. `test_lookup.py` is a manual one-off script for Open Library API testing.
 
 ## Environment Requirements
-- macOS (Darwin) — uses Skim, Apple Books, AppleScript
-- Python 3.9+
-- `fzf`, `pdfinfo` (from poppler) on PATH
-- Joplin running with Web Clipper enabled (for note sync)
-- Syncthing for code sync between machines
+- **macOS (Darwin):** Skim, Apple Books, AppleScript for context extraction
+- **Linux:** Sioyek (PDF), Foliate (EPUB), xclip/wl-clipboard
+- **Both:** Python 3.9+, `fzf`, `pdfinfo` (poppler), Joplin (optional, for note sync)
+- **Syncthing** for code sync between machines

@@ -35,3 +35,7 @@ TOC.md
 
 # Coding-agent working dirs
 .antigravitycli/
+
+# Per-machine notes (Syncthing-replicated, not Git-tracked)
+AGENTS.local.md
+*.local.md
