@@ -19,8 +19,78 @@ from .extractor import extract_apple_books_notes, extract_skim_notes
 from .fzf import run_fzf_search
 from .joplin import JoplinClient
 from .opener import open_file as _open_file
-from .context import get_current_context
-from .llm import ask_gemini
+from .llm import get_backend
+
+
+# ── Context helpers ─────────────────────────────────────────────────────
+
+def _read_context_from_clipboard():
+    """Read selected text from the system clipboard.
+
+    Returns:
+        tuple: (context_text, source_name) or (None, error_message)
+    """
+    import pyperclip
+    try:
+        text = pyperclip.paste()
+        if text and text.strip():
+            return text.strip(), "clipboard"
+        return None, "Clipboard is empty. Select text in your reader and copy it (Ctrl/Cmd+C), then try again."
+    except Exception as e:
+        return None, f"Clipboard read failed: {e}"
+
+
+def _read_context_from_file(path):
+    """Read context from a file.
+
+    Returns:
+        tuple: (context_text, source_name) or (None, error_message)
+    """
+    try:
+        with open(path) as f:
+            text = f.read().strip()
+        if text:
+            return text, str(path)
+        return None, f"File is empty: {path}"
+    except Exception as e:
+        return None, f"Could not read file: {e}"
+
+
+def _read_context_from_stdin():
+    """Read context from stdin (piped input).
+
+    Returns:
+        tuple: (context_text, source_name) or (None, error_message)
+    """
+    try:
+        text = sys.stdin.read().strip()
+        if text:
+            return text, "stdin"
+        return None, "No input received on stdin."
+    except Exception as e:
+        return None, f"Could not read stdin: {e}"
+
+
+def _resolve_context(question_args):
+    """Resolve context from --file, stdin, or clipboard.
+
+    Returns:
+        tuple: (context_text, source_name) or (None, error_message)
+    """
+    file_path = question_args.get("--file")
+
+    if file_path:
+        return _read_context_from_file(file_path)
+
+    # Non-TTY stdin can mean piped data OR a closed pipe (cron, systemd, some IDE
+    # terminals). Try reading, but fall through to clipboard if nothing's there.
+    if not sys.stdin.isatty():
+        text, src = _read_context_from_stdin()
+        if text:
+            return text, src
+        # stdin was empty — fall through to clipboard
+
+    return _read_context_from_clipboard()
 
 
 def fuzzy_match(query, text, threshold=0.6):
@@ -209,14 +279,14 @@ def reading_mode_loop(entry):
                 print("Please provide a question.")
                 continue
 
-            print("Detecting context...")
-            app_name, context_text = get_current_context()
+            context_text, source = _resolve_context({})
             if not context_text:
-                print(f"Error getting context: {app_name}")
+                print(f"Error: {source}")
                 continue
-            
-            print(f"Context captured from {app_name}. Asking Gemini...")
-            answer = ask_gemini(context_text, question)
+
+            print(f"Context from {source} ({len(context_text)} chars). Asking...")
+            backend = get_backend()
+            answer = backend.ask(context_text, question)
             print("\n--- Answer ---")
             print(answer)
             print("--------------")
@@ -412,7 +482,8 @@ Usage:
   dlm --type <ext> <query>       Filter by file type (pdf, epub)
   dlm --set-page <n> <query>     Set/save page for the selected file immediately
   dlm --exact <query>            Disable fuzzy matching (exact only)
-  dlm ask <question>             Ask AI about the current page in Skim
+  dlm ask <question>              Ask AI about selected text (clipboard / --file / stdin)
+  dlm ask <question> --file PATH  Ask AI about text in a file
 
 DDC Quick Reference:
   000 - Computer Science     400 - Language          700 - Arts
@@ -433,24 +504,49 @@ After searching, enter a number to open that file, or 'q' to quit.
 
 
 def main():
-    # Helper Command: Ask about current reading context
+    # Helper Command: Ask about selected text
     if len(sys.argv) > 1 and sys.argv[1] == "ask":
         if len(sys.argv) < 3:
-            print("Usage: dlm ask <question>")
+            print("Usage: dlm ask <question> [--file PATH]")
+            print()
+            print("Context sources (in priority order):")
+            print("  --file PATH   Read context from a file")
+            print("  stdin pipe    e.g. cat notes.txt | dlm ask 'summarize'")
+            print("  clipboard     Text you copied with Ctrl/Cmd+C")
             return
 
-        question = " ".join(sys.argv[2:])
-        print("Detecting active book context...")
-        
-        app_name, context_text = get_current_context()
+        # Parse --file flag and extract question
+        question_parts = []
+        file_path = None
+        i = 2
+        while i < len(sys.argv):
+            arg = sys.argv[i]
+            if arg == "--file":
+                if i + 1 < len(sys.argv):
+                    file_path = sys.argv[i + 1]
+                    i += 2
+                else:
+                    print("Error: --file requires a path")
+                    return
+            else:
+                question_parts.append(arg)
+                i += 1
+
+        question = " ".join(question_parts)
+        if not question:
+            print("Usage: dlm ask <question> [--file PATH]")
+            return
+
+        context_text, source = _resolve_context({"--file": file_path})
         if not context_text:
-            print(f"Error: {app_name}")
+            print(f"Error: {source}")
             return
 
-        print(f"Context captured from {app_name} ({len(context_text)} chars).")
-        print(f"Asking Gemini: {question}...\n")
-        
-        answer = ask_gemini(context_text, question)
+        print(f"Context from {source} ({len(context_text)} chars).")
+        print(f"Asking: {question}...\n")
+
+        backend = get_backend()
+        answer = backend.ask(context_text, question)
         print("--- Answer ---")
         print(answer)
         print("--------------")

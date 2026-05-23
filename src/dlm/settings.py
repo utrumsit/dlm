@@ -79,6 +79,7 @@ _config_store = {
     "SIOYEK_SHARED_DB": "~/.local/share/sioyek/shared.db",
     "FOLIATE_BINARY": "foliate",
     "FOLIATE_LIBRARY_DIR": "~/.local/share/com.github.johnfactotum.Foliate",
+    "LLM_BACKEND": "gemini",
 }
 
 
@@ -114,7 +115,11 @@ def _apply_toml_to_store(toml_data: dict):
     if foliate.get("library_dir"):
         _config_store["FOLIATE_LIBRARY_DIR"] = foliate["library_dir"]
 
-    gemini = toml_data.get("llm", {}).get("gemini", {})
+    llm = toml_data.get("llm", {})
+    if llm.get("backend"):
+        _config_store["LLM_BACKEND"] = llm["backend"]
+
+    gemini = llm.get("gemini", {})
     if gemini.get("api_key"):
         _config_store["GOOGLE_API_KEY"] = gemini["api_key"]
     if gemini.get("client_id"):

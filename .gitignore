@@ -32,3 +32,6 @@ TOC.md
 .DS_Store
 *.DS_Store
 .sync-conflict-*
+
+# Coding-agent working dirs
+.antigravitycli/
