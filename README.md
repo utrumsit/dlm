@@ -12,6 +12,7 @@ Now featuring an **AI Reading Assistant** that answers questions about selected 
 *   **AI Reading Assistant:** Select text in your reader, copy it, then run `dlm ask "what does this mean?"` — DLM sends the selection to Gemini and prints the answer.
 *   **Smart Annotation Sync:** Auto-extracts highlights from Skim (macOS PDF), Sioyek (Linux/macOS PDF), and Foliate (Linux EPUB) to Joplin, with intelligent dedup.
 *   **Auto-Sorting:** Automatically organizes `_Inbox` files into DDC subject folders.
+*   **Bundle ingest (agents):** `dlm-sort-inbox` files a Humble/O'Reilly drop using PDF-native metadata instead of Open Library.
 *   **Code/Data Separation:** Your library lives wherever you want (local, OneDrive, Dropbox); the code lives here.
 *   **Cross-Platform:** Runs on macOS and Linux.
 
@@ -61,6 +62,7 @@ This installs the following commands system-wide:
 | `dlm` | Fuzzy-search your library and open books |
 | `dlm-catalog` | Rescan all folders and rebuild `catalog.json`. Run after adding files. |
 | `dlm-sort` | Scan `_Inbox/`, look up ISBNs/titles, and move files to correct DDC folders. |
+| `dlm-sort-inbox` | **Agent helper** for Humble/O'Reilly bundles. Reads title/author from the PDF, guesses DDC, refuses Open Library overwrites, then catalogs. Not a pipx entry point — `scripts/sort_inbox.py`, linked as `~/.local/bin/dlm-sort-inbox`. |
 | `dlm-init` | Scaffold the DDC directory structure and a starter config. |
 | `dlm-toc` | Generate a `TOC.md` markdown file listing your entire collection. |
 | `dlm-auth` | Authenticate with Google via OAuth for the AI Reading Assistant. |
@@ -141,6 +143,34 @@ In the reading prompt, sync highlights to Joplin:
 ```
 Pulls highlights from your reader and appends them to a Joplin notebook. Only **new** highlights are synced (tracked per book).
 
+### Sorting a book bundle (for agents)
+
+Use this when the user drops a Humble Bundle (or similar) of new PDFs into Downloads. **Do not run raw `dlm-sort` on a new-book bundle.** Open Library often misses recent O’Reilly titles or matches the wrong book, and `dlm-sort` will happily write that bad metadata into the PDF.
+
+```bash
+# Preview what will be filed (no moves)
+dlm-sort-inbox --move-from ~/Downloads --since today --dry-run
+
+# Move today's PDFs into _Inbox, file them, rebuild catalog
+dlm-sort-inbox --move-from ~/Downloads --since today
+```
+
+If the files are already in `_Inbox/`:
+
+```bash
+dlm-sort-inbox --dry-run
+dlm-sort-inbox
+```
+
+What it does:
+
+1. Reads **Title** / **Author** from the PDF (`exiftool`, then the title page). It does **not** trust Open Library for new books.
+2. Guesses a Dewey number from the title + filename (005.133 programming languages, 006.31 ML, 006.312 data, etc.) using this library’s existing `005` / `006` folder rules.
+3. Drives `dlm-sort` and answers **n** to “Write metadata to file?”
+4. Runs `dlm-catalog`.
+
+After a run: check for same-edition duplicates (Humble often re-downloads a book already in the library) and delete the extra copy. Confirm DDC guesses that look off — the rules live at the top of `scripts/sort_inbox.py`.
+
 ### Retroactive Metadata Fixing
 Scan and fix metadata for existing books:
 ```bash
@@ -209,6 +239,8 @@ dlm/
 │   └── toc.py           # Table of contents generator
 ├── config.toml.example  # TOML config template (recommended)
 ├── config.py.example    # Python config template (deprecated, auto-migrates)
+├── scripts/
+│   └── sort_inbox.py    # dlm-sort-inbox — agent helper for Humble/O'Reilly bundles
 ├── pyproject.toml       # Dependencies and entry points
 └── README.md
 ```

@@ -6,7 +6,7 @@ This code directory is synced via **Syncthing** across multiple machines (macOS 
 **Machine-specific notes:** if `AGENTS.local.md` exists alongside this file, read it for host-by-host details (reader paths, per-machine quirks). That file is gitignored but Syncthing-replicated.
 
 ### What Syncs (and What Doesn't)
-- **Synced (Syncthing):** All code in `src/dlm/`, `pyproject.toml`, `poetry.lock`, `AGENTS.md`, `.stignore`, `README.md`
+- **Synced (Syncthing):** All code in `src/dlm/`, `scripts/`, `pyproject.toml`, `poetry.lock`, `AGENTS.md`, `.stignore`, `README.md`
 - **NOT synced (`.stignore`):** `.venv*/`, `__pycache__/`, `dist/`, `build/`, `.DS_Store`, editor configs
 - **NOT synced (local per-machine):** `~/.config/dlm/config.toml`, Poetry virtualenvs
 - **Separate sync (OneDrive via rclone):** Library data at `DLM_LIBRARY_ROOT` — books, `catalog.json`, `reading_progress.json`
@@ -69,7 +69,8 @@ TOML config at `~/.config/dlm/config.toml`. Schema defined as dataclasses in `co
 | `auth/` | Google OAuth2 flow for Gemini |
 | `data.py` | Shared data access — `load_catalog()`, `load_progress()`, `save_progress()` |
 | `catalog.py` | Scans library folders, extracts PDF/EPUB metadata, builds `catalog.json` |
-| `sort.py` | Auto-sorts `_Inbox/` files using Open Library DDC lookup |
+| `sort.py` | Auto-sorts `_Inbox/` files using Open Library DDC lookup. **Do not use on new Humble/O'Reilly bundles** — see `scripts/sort_inbox.py` |
+| `scripts/sort_inbox.py` | Agent helper (`dlm-sort-inbox`). Files a bundle from `_Inbox` using PDF-native metadata + guessed DDC |
 | `extractor.py` | Thin wrappers delegating to reader classes |
 | `sync_state.py` | Tracks which highlight IDs have been synced to Joplin |
 | `joplin.py` | Joplin Web Clipper API client with smart note merging |
@@ -91,6 +92,7 @@ TOML config at `~/.config/dlm/config.toml`. Schema defined as dataclasses in `co
 | `dlm-config` | `config_cli:main` |
 | `dlm-doctor` | `doctor:main` |
 | `dlm-metafix` | `metafix:main` |
+| `dlm-sort-inbox` | `scripts/sort_inbox.py` (not a poetry entry point; symlink `~/.local/bin/dlm-sort-inbox`) |
 
 ## Package Manager
 **Poetry** (or pipx for end-users). Virtualenvs live in Poetry's cache, NOT in-project. This avoids Syncthing conflicts between machines.
@@ -124,10 +126,38 @@ Subcategories nest inside: e.g., `700_Arts/780_Music/781.65_Jazz/`
 
 New categories must be added to **both** `CATEGORY_INFO` (top-level) or `DDC_SUBCATEGORIES` (nested) in `catalog.py`, **and** to `init.py` if they should be created on first run.
 
+## Sorting a book bundle (agents)
+
+When the user buys a Humble Bundle (or similar) and asks to file the PDFs, **use `dlm-sort-inbox`, not `dlm-sort`.**
+
+`dlm-sort` looks up titles on Open Library. New O’Reilly books are often missing or match the wrong work, and the sorter will write that bad metadata into the PDF. `dlm-sort-inbox` reads Title/Author from the file itself, guesses Dewey from the title + Humble slug, answers **n** to Open Library overwrites, then runs `dlm-catalog`.
+
+```bash
+# Typical flow: today's Downloads → _Inbox → DDC folders
+dlm-sort-inbox --move-from ~/Downloads --since today --dry-run
+dlm-sort-inbox --move-from ~/Downloads --since today
+```
+
+If the user already moved files into `_Inbox/`:
+
+```bash
+dlm-sort-inbox --dry-run
+dlm-sort-inbox
+```
+
+Afterward:
+
+- Dedup same-edition copies (same ISBN / title / page count). Humble often re-downloads a book already in the library; keep one.
+- Spot-check DDC guesses. Keyword rules are in `DDC_RULES` at the top of `scripts/sort_inbox.py` (005.133 languages, 006.31 ML, 006.312 data, 005.54 Excel, …). They file into existing `005_Programming` / `006_Artificial_Intelligence` folders via `sorting_config.json`.
+- Do not invent new subcategory folders unless the user asks.
+
+Script path: `scripts/sort_inbox.py`. Command: `dlm-sort-inbox` (symlink in `~/.local/bin`). Full human/agent write-up: README.md → “Sorting a book bundle (for agents)”.
+
 ## Known Issues / Tech Debt
 - No graceful handling when `catalog.json` doesn't exist (crashes; should suggest running `dlm-catalog`)
 - No test suite beyond `test_lookup.py` (manual one-off)
 - Per-machine setup TODOs (e.g. unfilled tokens) live in `AGENTS.local.md`, not here
+- `dlm-sort` Open Library lookup is unreliable for new books; agents must use `dlm-sort-inbox` for bundles
 
 ## Testing
 No test suite yet. `test_lookup.py` is a manual one-off script for Open Library API testing.
